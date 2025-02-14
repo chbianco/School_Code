@@ -1,0 +1,122 @@
+% Script to solve the Rayleigh equation using an iterative
+% shooting integration method.
+
+% Updated Kenny Breuer Jan 2025
+
+clear
+close all
+
+global alpha c
+
+j = 0;
+k = 0;
+
+tolerance = 1.e-7;
+ymax = 6;
+
+options = odeset('RelTol',tolerance);  %,'Stats','on','OutputFcn',@odeplot)
+
+figure
+for alpha = 0.025:0.025:1
+    j = j+1;
+
+    % Get two guesses for C to start the iteration
+
+    % for exponential decaying solutions:  
+    %   The b.c. at the left end is that v' = alpha v
+    %   The b.c. at the right end is v'+ alpha v = 0
+
+    C1 = 0.1 + 0.1*i;
+    c = C1;
+    [y v] = ode113('rayleigh', [-ymax ymax], [1; alpha], options);
+    E1 = v(end,2) + alpha*v(end,1);
+
+    C2 = 1.03*(1+i)*C1;
+    c = C2;
+    [y v] = ode113('rayleigh', [-ymax ymax], [1; alpha], options);
+    E2 = v(end,2) + alpha*v(end,1);
+
+    % Use a shooting method and loop until converged:
+    while abs(E2) > tolerance,
+        slope = (E2 - E1) / (C2 - C1);
+        E1 = E2;
+        C1 = C2;
+        C2 = C1 - E1/ slope;
+
+        c = C2;
+        [y,v] = ode113('rayleigh', [-ymax ymax], [1 alpha],  options);
+        E2 = v(end,2) + alpha*v(end,1);
+
+        %fprintf('C: (%10.6f, %10.6f), Error: %6.2e, N-steps: %3d\n', real(C2), imag(C2), abs(E2), length(v));
+    end
+
+    % disp('Converged');
+
+    % Catch a few eigenmodes for plotting
+    if abs(mod(10*alpha, 2)) < 0.01,
+
+        k = k+1;
+        vmax = max(abs(v(:,1)));
+        u = abs(v(:,2))/alpha/vmax;
+
+        subplot(1,3,1)
+        plot(y, abs(v(:,1))/vmax, 'LineWidth',2)
+        hold on
+        xlabel('y')
+        ylabel('v Amplitude')
+        set(gca, 'FontSize',16)
+
+        subplot(1,3,2)
+        plot(y, abs(v(:,2))/alpha/vmax, 'LineWidth',2)
+        hold on
+        xlabel('y')
+        ylabel('u Amplitude')
+        set(gca, 'FontSize',16)
+
+        legend_string{k} = sprintf('\\alpha = %5.3f', alpha);
+    end
+
+    % Store the results for later plotting
+    al(j) = alpha;
+    cl(j)= C2;
+end
+
+% Add the legend and make the axes the same for both u and v
+subplot(1,3,2)
+legend(legend_string)
+y_ax = ylim;
+
+subplot(1,3,1)
+legend(legend_string)
+ylim(y_ax)
+
+
+% Plot the growth rates
+subplot(1,3,3)
+plot(al, imag(cl),  'LineWidth',2)
+xlabel('Wavenumber, \alpha')
+ylabel('Growth rate, c_i')
+set(gca, 'FontSize',16)
+
+%For Howard Semicircle
+theta = linspace(0, pi, 100); % Angles from 0 to pi (half-circle)
+r = 1; % Radius
+center_x = 0.5; % X-center
+center_y = 0; % Y-center
+
+x = center_x + r * cos(theta); % X-coordinates
+y = center_y + r * sin(theta); % Y-coordinates
+
+figure(2)
+plot(real(cl), imag(cl),'LineWidth', 2, 'Color', 'b')
+hold on
+plot(x, y, 'b', 'LineWidth', 2, 'Color', 'r');
+ylim([0,1.5])
+xlim([-1, 1.5])
+grid on;
+xlabel('$c_r$','Interpreter','Latex','FontSize',12);
+ylabel('$c_i$','Interpreter','latex','FontSize',12);
+%title('Lift Comparison, Bands with Wind','Interpreter','latex','FontSize',12);
+set(gca,'TickLabelInterpreter','latex','FontSize',16)
+set(gcf,'color','w')
+legend('Eigenvalues', 'Howards Semicircle')

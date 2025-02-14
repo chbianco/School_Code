@@ -52,7 +52,7 @@ plot(cr1, -1i.*ci1,'LineWidth', 2, 'Color', 'b')
 hold on
 plot(x, y, 'b', 'LineWidth', 2, 'Color', 'r');
 ylim([0,1.5])
-xlim([-.5, 2])
+xlim([-1, 1.5])
 grid on;
 xlabel('$c_r$','Interpreter','Latex','FontSize',12);
 ylabel('$c_i$','Interpreter','latex','FontSize',12);
