@@ -8,11 +8,10 @@ cr2 = -sqrt((1-1./(2.*ar)).^2 - (1./(4.*ar.^2)).*exp(-4.*ar));
 xr = linspace(0, 0.6392, 1000);
 zero = linspace(0,0,1000);
 
-ai = linspace(.0001, 0.6392,1000);
+ai = linspace(0, 0.6392,1000);
 ci1 = sqrt((1-1./(2.*ai)).^2 - (1./(4.*ai.^2)).*exp(-4.*ai));
 ci2 = -sqrt((1-1./(2.*ai)).^2 - (1./(4.*ai.^2)).*exp(-4.*ai));
 
-xi = linspace(.6392, 2, 1000);
 
 figure(1)
 plot(ar, cr1, 'LineWidth', 2, 'Color', 'b')
@@ -31,9 +30,7 @@ set(gcf,'color','w')
 figure(2)
 plot(ai, -1i.*ci1, 'LineWidth', 2, 'Color', 'b')
 hold on
-plot(ai, -1i.*ci2, 'LineWidth', 2, 'Color', 'b')
-hold on
-plot(xi, zero,'LineWidth', 2, 'Color', 'b')
+plot(ai, ci2, 'LineWidth', 2, 'Color', 'b')
 ylim([-1,1])
 grid on;
 xlabel('$\alpha$','Interpreter','Latex','FontSize',12);
