@@ -42,15 +42,8 @@ ylabel('$c_i$','Interpreter','latex','FontSize',12);
 set(gca,'TickLabelInterpreter','latex','FontSize',16)
 set(gcf,'color','w')
 
-
-theta = linspace(0, pi, 100); % Angles from 0 to pi (half-circle)
-x = cos(theta); % X-coordinates
-y = sin(theta); % Y-coordinates
-
 figure(3)
 plot(cr1, -1i.*ci1,'LineWidth', 2, 'Color', 'b')
-hold on
-plot(x, y, 'b', 'LineWidth', 2, 'Color', 'r');
 ylim([0,1.5])
 xlim([-.5, 2])
 grid on;
@@ -59,4 +52,3 @@ ylabel('$c_i$','Interpreter','latex','FontSize',12);
 %title('Lift Comparison, Bands with Wind','Interpreter','latex','FontSize',12);
 set(gca,'TickLabelInterpreter','latex','FontSize',16)
 set(gcf,'color','w')
-legend('Eigenvalues', 'Howards Semicircle')
