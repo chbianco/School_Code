@@ -3,10 +3,10 @@ close all
 
 % CHANGE THIS
 n = 150;
-Re = 2000;
+Re = 6000;
 beta = 0;
 
-alph_vec = linspace(1,1.2, 50);
+alph_vec = linspace(0.6,1.4, 50);
 
 ci_vec = zeros(length(alph_vec),1);
 cr_vec = zeros(length(alph_vec),1);
@@ -55,6 +55,7 @@ cr_vec(i) = max(real(eigvals));
 end
 
 scatter(alph_vec, ci_vec)
-
+xlabel('$\alpha$','Interpreter','Latex','FontSize',12);
+ylabel('$c_i$','Interpreter','latex','FontSize',12);
 
 

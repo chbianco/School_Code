@@ -2,7 +2,7 @@ clear all
 close all
 %% Doing the math
 % CHANGE THIS
-n = 80;
+n = 150;
 Re = 2000;
 alp = 1.5102; %Least stable alpha for Re = 2000 is 1.5102
 beta = 0;
