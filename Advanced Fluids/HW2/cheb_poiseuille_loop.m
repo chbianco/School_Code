@@ -6,7 +6,7 @@ n = 150;
 Re = 2000;
 beta = 0;
 
-alph_vec = linspace(1,1.2, 30);
+alph_vec = linspace(1,1.2, 50);
 
 ci_vec = zeros(length(alph_vec),1);
 cr_vec = zeros(length(alph_vec),1);
@@ -55,3 +55,6 @@ cr_vec(i) = max(real(eigvals));
 end
 
 scatter(alph_vec, ci_vec)
+
+
+

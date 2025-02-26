@@ -1,10 +1,10 @@
 clear all
 close all
-
+%% Doing the math
 % CHANGE THIS
 n = 80;
 Re = 2000;
-alp = 1;
+alp = 1.5102; %Least stable alpha for Re = 2000 is 1.5102
 beta = 0;
 
 zi=sqrt(-1);
@@ -43,17 +43,61 @@ d=inv(B)*A;
 [eigvecs, eigvals_matrix] = eig(d);
 eigvals = diag(eigvals_matrix);
 
+%Sorting our OS vs Squire
+% ci_comp = sort(imag(eigvals), 'desc');
+% cr_comp = sort(real(eigvals), 'desc');
+% 
+% ci_os = ci_comp;
+% ci_os(1:2:end) = [];
+
+%% Calculate Velocities
+modes = 5; %number of modes you want
+[~, idx] = maxk(imag(eigvals), modes);
+
+for j = 1:modes
+
+    tk = eigvecs(:, idx(j));
+    tk = tk(tk ~= 0);
+    vhat = D0*tk;
+    vprime = D1*tk;
+    uhat = vprime.*(1i*alp);
+
+    figure(2)
+    plot(abs(uhat), y, 'LineWidth', 2, 'DisplayName',['Mode ', num2str(j)])
+    hold on
+    
+    figure(3)
+    plot(abs(vhat), y, 'LineWidth', 2, 'DisplayName',['Mode ', num2str(j)])
+    hold on
+   
+
+end
+
+figure(2)
+xlabel('$|\hat{u}|$','Interpreter','Latex','FontSize',12);
+ylabel('$y$','Interpreter','latex','FontSize',12);
+% xlim([0,2])
+% ylim([-1, 0])
+title('x-velocity','Interpreter','latex','FontSize',12);
+set(gca,'TickLabelInterpreter','latex','FontSize',16)
+legend('show')
+
+figure(3)
+xlabel('$|\hat{v}|$','Interpreter','Latex','FontSize',12);
+ylabel('$y$','Interpreter','latex','FontSize',12);
+% xlim([0,2])
+% ylim([-1, 0])
+title('y-velocity','Interpreter','latex','FontSize',12);
+set(gca,'TickLabelInterpreter','latex','FontSize',16)
+legend('show')
+
+%% Plotting
 figure(1)
 scatter(real(eigvals), imag(eigvals))
-
-ci_comp = sort(imag(eigvals), 'desc');
-cr_comp = sort(real(eigvals), 'desc');
-
-
-xlabel('$Real$','Interpreter','Latex','FontSize',12);
-ylabel('$Imaginary$','Interpreter','latex','FontSize',12);
-xlim([0,1])
+xlabel('$c_r$','Interpreter','Latex','FontSize',12);
+ylabel('$c_i$','Interpreter','latex','FontSize',12);
+xlim([0,2])
 ylim([-1, 0])
-title('Evolution of $v(t)$','Interpreter','latex','FontSize',12);
+title(['Eigenvalue Spectrum for $\alpha$ = ',num2str(alp), ', Re = ',num2str(Re)],'Interpreter','latex','FontSize',12);
 set(gca,'TickLabelInterpreter','latex','FontSize',16)
 % %set(gcf,'color','w', 'Position', [10 10 900 600])
