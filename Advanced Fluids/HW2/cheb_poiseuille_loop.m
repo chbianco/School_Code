@@ -2,10 +2,17 @@ clear all
 close all
 
 % CHANGE THIS
-n = 80;
+n = 150;
 Re = 2000;
-alp = 1;
 beta = 0;
+
+alph_vec = linspace(1,1.2, 30);
+
+ci_vec = zeros(length(alph_vec),1);
+cr_vec = zeros(length(alph_vec),1);
+
+for i = 1:length(alph_vec)
+alp = alph_vec(i);
 
 zi=sqrt(-1);
 % mean velocity
@@ -39,21 +46,12 @@ A=[A11 zeros(Nos,Nsq); A21 A22];
 B=[B11 zeros(Nos,Nsq); zeros(Nsq,Nos) B22];
 
 % Solve the eigenvalue problem
-d=inv(B)*A;
-[eigvecs, eigvals_matrix] = eig(d);
+[eigvecs, eigvals_matrix] = eig(A, B);
 eigvals = diag(eigvals_matrix);
 
-figure(1)
-scatter(real(eigvals), imag(eigvals))
+ci_vec(i) = max(imag(eigvals));
+cr_vec(i) = max(real(eigvals));
 
-ci_comp = sort(imag(eigvals), 'desc');
-cr_comp = sort(real(eigvals), 'desc');
+end
 
-
-xlabel('$Real$','Interpreter','Latex','FontSize',12);
-ylabel('$Imaginary$','Interpreter','latex','FontSize',12);
-xlim([0,1])
-ylim([-1, 0])
-title('Evolution of $v(t)$','Interpreter','latex','FontSize',12);
-set(gca,'TickLabelInterpreter','latex','FontSize',16)
-% %set(gcf,'color','w', 'Position', [10 10 900 600])
+scatter(alph_vec, ci_vec)
