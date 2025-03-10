@@ -3,8 +3,8 @@ close all
 %% Doing the math
 % CHANGE THIS
 n = 150;
-Re = 2000;
-alp = 1.5102; %Least stable alpha for Re = 2000 is 1.5102
+Re = 6000;
+alp = 1; %Least stable alpha for Re = 2000 is 1.5102
 beta = 0;
 
 zi=sqrt(-1);
@@ -96,7 +96,7 @@ figure(1)
 scatter(real(eigvals), imag(eigvals))
 xlabel('$c_r$','Interpreter','Latex','FontSize',12);
 ylabel('$c_i$','Interpreter','latex','FontSize',12);
-xlim([0,2])
+xlim([0,1])
 ylim([-1, 0])
 title(['Eigenvalue Spectrum for $\alpha$ = ',num2str(alp), ', Re = ',num2str(Re)],'Interpreter','latex','FontSize',12);
 set(gca,'TickLabelInterpreter','latex','FontSize',16)

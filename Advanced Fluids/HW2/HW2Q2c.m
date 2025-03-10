@@ -47,7 +47,7 @@ for j = 1:3
         [eigvecs, eigvals_matrix] = eig(A, B);
         eigvals = diag(eigvals_matrix);
 
-        eigvals = eigvals(real(eigvals) >= -1 & real(eigvals) <= 1.5);
+        eigvals = eigvals(real(eigvals) >= 0 & real(eigvals) <= 1.5);
 
 
         ci_vec(m) = max(imag(eigvals));
