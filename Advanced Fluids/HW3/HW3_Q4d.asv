@@ -12,26 +12,26 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 set(groot, 'defaultFigureColor', 'white');
 
-%% Plotting
 
 s = linspace(0, 10^-4, 1000); %Vector of particle sizes
-mu = .001; % Dynamic viscosity of water, in Pa-s
+mu = 1.83e-5; % Dynamic viscosity, in Pa-s
 rho = 1000; % Density of the particle, kg/m^3
-u_vec = [10, 20 30]; %Particle velocities, in m/s
-
-figure(1); hold on; %Initialize figure for plotting
-
+u_vec = [10, 20 30];
 
 for i = 1:length(u_vec)
     
     u = u_vec(i);
     Re = rho.*u.*s./mu;
-    plot(s, Re, 'DisplayName', sprintf('$u_0 = %d$ m/s', u));
+    plot(s, Re, 'DisplayName', sprintf('$r = %.1e, \\; \\mathbf{u}_{p0} = [%d, %d]$', r, up0(1), up0(2)));
 
 end
 
+figure(1)
+plot(s, Res);
 xlabel('Particle Radius (m)')
 ylabel('Re')
-xlim([0 10^-4])
-legend('Location', 'best')
-grid on 
+
+figure(2)
+plot(v, Rev)
+xlabel('Initial Particle Velocity (m/s)')
+ylabel('Re')
