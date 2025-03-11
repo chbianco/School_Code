@@ -20,8 +20,8 @@ v = linspace(0,30,1000);
  r = 5*10^-5;
  u = 20;
 
- Res = rho.*u.*s/mu;
- Rev = rho.*v.*r;
+ Res = rho.*u.*s./mu;
+ Rev = rho.*v.*r./mu;
 
 figure(1)
 plot(s, Res);
