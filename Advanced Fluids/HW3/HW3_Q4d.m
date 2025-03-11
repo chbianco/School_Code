@@ -15,7 +15,7 @@ set(groot, 'defaultFigureColor', 'white');
 %% Plotting
 
 s = linspace(0, 10^-4, 1000); %Vector of particle sizes
-mu = .001; % Dynamic viscosity of water, in Pa-s
+mu = 1.8*10^-5; % Dynamic viscosity of air, in Pa-s
 rho = 1000; % Density of the particle, kg/m^3
 u_vec = [10, 20 30]; %Particle velocities, in m/s
 
