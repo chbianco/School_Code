@@ -1,0 +1,6 @@
+# macOS system files
+.DS_Store
+
+# MATLAB backup and autosave files
+*.asv  # AutoSave files
+*.m~   # MATLAB backup files
