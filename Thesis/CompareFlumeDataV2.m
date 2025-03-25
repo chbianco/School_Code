@@ -157,7 +157,20 @@ close all
 
 color_vec = ['b', 'r', 'y'];
 
+%Initialize the figure
 figure(1);
+% Get the current position of the figure
+pos = get(gcf, 'Position');  
+% Scale the width and height by a factor (e.g., 1.5 times larger)
+scaleFactor = 1.5;  % Adjust this factor as needed
+newWidth = pos(3) * scaleFactor;
+newHeight = pos(4) * scaleFactor;
+% Keep the figure centered by adjusting the position
+newX = pos(1) - (newWidth - pos(3)) / 2;
+newY = pos(2) - (newHeight - pos(4)) / 2;
+% Set the new position
+set(gcf, 'Position', [newX, newY, newWidth, newHeight]);
+
 hold on;
 grid on;
 xlabel('$t_c = \frac{tU}{L}$','Interpreter','Latex','FontSize',12);
