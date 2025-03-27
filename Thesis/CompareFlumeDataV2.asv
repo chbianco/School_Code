@@ -62,10 +62,11 @@ for i = 1:x
         numPart = str2double(fileParts{6}); % Convert to number
 
         else
-        newNumPart = numPart + (j-1);
+        newNumPart = numPart + k;
         newFileName = sprintf('%s_%d_%s', baseName, newNumPart, suffixName);
-        %Assign the new file name
-        dataFile = newFileName;
+        % Check if the file exists before loading
+        data_file = 
+
         end
         
         % Load the selected data file
