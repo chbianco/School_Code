@@ -147,39 +147,39 @@ for i = 1:x
 end
 
 
-%% Sync up the times
-for j = 1:x
-    All_times{j} = All_times{j} - min(All_times{j});
-end
-
-% Align all datasets to the first one
-ref_time = All_times{1};
-ref_CL = All_filtCL{1};
-
-for j = 2:x
-    t = All_times{j};
-    C = All_filtCL{j};
-    
-    % Resample the reference and current dataset to common time points
-    t_common = linspace(min([ref_time(:); t(:)]), max([ref_time(:); t(:)]), max(length(ref_time), length(t)));
-    ref_CL_resampled = interp1(ref_time, ref_CL, t_common);
-    C_resampled = interp1(t, C, t_common, 'linear', 'extrap');
-    
-    % Compute cross-correlation
-    [xc, lags] = xcorr(ref_CL_resampled, C_resampled);
-    
-    % Find the lag with maximum correlation
-    [~, idx] = max(xc);
-    time_lag = lags(idx) * mean(diff(t_common));
-    
-    % Shift the current dataset by the computed time lag
-    All_times{j} = t + time_lag;
-end
+% %% Sync up the times
+% for j = 1:x
+%     All_times{j} = All_times{j} - min(All_times{j});
+% end
+% 
+% % Align all datasets to the first one
+% ref_time = All_times{1};
+% ref_CL = All_filtCL{1};
+% 
+% for j = 2:x
+%     t = All_times{j};
+%     C = All_filtCL{j};
+% 
+%     % Resample the reference and current dataset to common time points
+%     t_common = linspace(min([ref_time(:); t(:)]), max([ref_time(:); t(:)]), max(length(ref_time), length(t)));
+%     ref_CL_resampled = interp1(ref_time, ref_CL, t_common);
+%     C_resampled = interp1(t, C, t_common, 'linear', 'extrap');
+% 
+%     % Compute cross-correlation
+%     [xc, lags] = xcorr(ref_CL_resampled, C_resampled);
+% 
+%     % Find the lag with maximum correlation
+%     [~, idx] = max(xc);
+%     time_lag = lags(idx) * mean(diff(t_common));
+% 
+%     % Shift the current dataset by the computed time lag
+%     All_times{j} = t + time_lag;
+% end
 
 %% Plotting
 close all
 
-color_vec = ['b', 'r', 'y'];
+color_vec = ["#0072BD", "#D95319", "#EDB120"];  % String array
 
 %Initialize the figure
 figure(1);
@@ -213,8 +213,11 @@ for j = 1:x
     % Plot main line and store handle for legend
     plot_handles(j) = plot(t, C,'Color', color_vec(j) , 'LineWidth', 2);
 
-    % Shaded region (fill) for standard deviation, but exclude from legend
-    fill([t, fliplr(t)], [C + sd, fliplr(C - sd)], color_vec(j), 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'HandleVisibility', 'off');
+     % Convert color to char for fill()
+    fill_color = hex2rgb(color_vec(j));
+    
+    % Shaded region (fill) for standard deviation
+    fill([t, fliplr(t)], [C + sd, fliplr(C - sd)], fill_color, 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'HandleVisibility', 'off');
 end
 
 % Create legend using only line handles
