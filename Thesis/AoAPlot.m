@@ -65,7 +65,7 @@ for i = 1:x
 
     figure(2)
     hold on
-    errorbar(aoa,allData.CD_Mean,allData.CD_Std, 'DisplayName', leg);
+    errorbar(aoa,allData.CD_Mean + 0.7,allData.CD_Std, 'DisplayName', leg);
 
     figure(3)
     hold on
