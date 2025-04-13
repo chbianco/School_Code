@@ -79,9 +79,9 @@ for i = 1:x
         filtLift = filtfilt(b, a, Lift);
 
         % Compute CL
-        u = mean(abs(allData.out.Vectrino_x_ms));
-        rho = 1000; L = 0.0751;
-        CL = 2.*Lift/(rho*(u^2)*L);
+        u=0.35;
+        qinf = 0.5*1000*0.35*0.35*0.1*0.3;
+        CL = Lift/qinf;
         filtCL = filtfilt(b, a, CL); 
 
         % Convert time
@@ -197,8 +197,8 @@ set(gcf, 'Position', [newX, newY, newWidth, newHeight]);
 
 hold on;
 grid on;
-xlabel('$t_c = \frac{tU}{L}$','Interpreter','Latex','FontSize',12);
-ylabel('$C_L$','Interpreter','latex','FontSize',12);
+xlabel('$t_c = \frac{tU}{L}$','Interpreter','Latex','FontSize',18);
+ylabel('$C_L$','Interpreter','latex','FontSize',18);
 xlim([10,40])
 
 plot_handles = gobjects(1, x); % Store line handles for legend
@@ -229,7 +229,7 @@ titlename = ''; % Initialize in case user says no
 if lower(ifTitle) == 'y'
     titlename = input('Enter title: ', 's');
 end
-title(titlename,'Interpreter','latex','FontSize',12);
+title(titlename,'Interpreter','latex','FontSize',18);
 
 hold off;
 
@@ -238,5 +238,6 @@ saveGraph = input('Do you want to save the graph? (y/n): ', 's');
 if lower(saveGraph) == 'y'
     filename = input('Enter filename (without extension): ', 's');
     saveas(gcf, [filename, '.png']); % Save the figure as a PNG file
+    saveas(gcf, [filename, '.fig']); % Save the figure as a FIG file
     fprintf('Figure saved as %s.png\n', filename);
 end

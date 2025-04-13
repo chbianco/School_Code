@@ -45,6 +45,10 @@ xlabel('Angle of Attack');
 ylabel('$C_M$')
 legend('show')
 
+qinf = 0.5*1000*0.35*0.35*0.1*0.3; % dynamic pressure
+drag_at_zero = 0.1286/qinf; % save drag at zero AoA
+
+
 for i = 1:x
     
     % Prompts user to select file
@@ -59,13 +63,18 @@ for i = 1:x
     allData = load(strcat(dataPath, dataFile));
     aoa = allData.aoa_vec;
 
+    CD = allData.CD_Mean;
+    
+    drag_bias =  CD(1);
+
+
     figure(1)
     hold on
     errorbar(aoa,allData.CL_Mean,allData.CL_Std, 'DisplayName', leg);
 
     figure(2)
     hold on
-    errorbar(aoa,allData.CD_Mean,allData.CD_Std, 'DisplayName', leg);
+    errorbar(aoa,CD - drag_bias + drag_at_zero ,allData.CD_Std, 'DisplayName', leg);
 
     figure(3)
     hold on
