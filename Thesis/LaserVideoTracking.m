@@ -30,10 +30,10 @@ vidObj = VideoReader(videoFile);
 firstFrame = readFrame(vidObj);
 brightFirstFrame = imadjust(firstFrame, stretchlim(firstFrame), []);
 
-%% CALIBRATION STEP: Select two points 10 cm apart
+%% CALIBRATION STEP: Select two points 31 cm apart
 figure;
 imshow(brightFirstFrame);
-title('Calibration: Click TWO points that are 10 cm apart, then press Enter');
+title('Calibration: Click TWO points that are 31 cm apart, then press Enter');
 % Get separate x and y outputs.
 [xCal, yCal] = getpts;
 if length(xCal) < 2 || length(yCal) < 2
@@ -43,7 +43,7 @@ end
 calibPt1 = [xCal(1), yCal(1)];
 calibPt2 = [xCal(2), yCal(2)];
 pixelDistance = sqrt((calibPt1(1) - calibPt2(1))^2 + (calibPt1(2) - calibPt2(2))^2);
-scaleFactor = 10 / pixelDistance;  % cm per pixel conversion factor
+scaleFactor = 31 / pixelDistance;  % cm per pixel conversion factor
 close;
 
 %% LASER DOT SELECTION: Select the laser dot manually on the first frame
