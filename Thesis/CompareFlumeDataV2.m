@@ -16,18 +16,28 @@ else
 end
 
 %% Load and process data
-prompt = 'How many experiments do you want to graph? ';
-x = input(prompt);
+% prompt = 'How many experiments do you want to graph? ';
+% x = input(prompt);
+
+
+x = 3;
+numDatasets = 5;
+avgChoice = 'y';
+
 All_CL = cell(1, x);
 All_filtCL = cell(1, x);
 All_times = cell(1, x);
 All_sd = cell(1, x);
 leg_vec = cell(1, x);
 
+leg_vec{1} = "High Flex";
+leg_vec{2} = "Low Flex";
+leg_vec{3} = "Rigid";
+
 for i = 1:x
     % Ask if user wants to average datasets
-    prompt = 'Do you want to average some datasets for this experiment? (y/n): ';
-    avgChoice = input(prompt, 's');
+    % prompt = 'Do you want to average some datasets for this experiment? (y/n): ';
+    % avgChoice = input(prompt, 's');
     
     % Initialize variables
     dataset_CL = {};
@@ -35,11 +45,11 @@ for i = 1:x
     t_common = [];
     
     %Asks number of datasets to average if the user wants to average
-    if lower(avgChoice) == 'y'
-        numDatasets = input('How many datasets to average? ');
-    else
-        numDatasets = 1;
-    end
+    % if lower(avgChoice) == 'y'
+    %     numDatasets = input('How many datasets to average? ');
+    % else
+    %     numDatasets = 1;
+    % end
     
     %Starts averaging datasets
     for j = 1:numDatasets
@@ -142,8 +152,8 @@ for i = 1:x
     end
 
     % Legend entry
-    prompt = 'Legend entry? ';
-    leg_vec{i} = input(prompt, 's');
+    % prompt = 'Legend entry? ';
+    % leg_vec{i} = input(prompt, 's');
 end
 
 
@@ -179,13 +189,29 @@ end
 %% Getting maxima
 posMax = zeros(1,x);
 negMax = zeros(1,x);
+posMax_er = zeros(1,x);
+negMax_er = zeros(1,x);
+
 for j = 1:x
     posMax(j) = max(All_filtCL{j});
     negMax(j) = min(All_filtCL{j});
+
+    % Find index of posMax and negMax in the data
+    idx_pos = find(All_filtCL{j} == posMax(j), 1, 'first');
+    idx_neg = find(All_filtCL{j} == negMax(j), 1, 'first');
+
+    % Get corresponding standard deviations
+    posMax_er(j) = All_sd{j}(idx_pos)/sqrt(5);
+    negMax_er(j) = All_sd{j}(idx_neg)/sqrt(5);
+
+
 end
 % disp(posMax)
 % disp(negMax)
-
+disp(['Positive error is '])
+disp(posMax_er)
+disp(['Negative error is '])
+disp(negMax_er)
 %% Plotting
 close all
 
@@ -221,6 +247,8 @@ for j = 1:x
     se = sd./sqrt(5); %Standard error for five trials 
      
     C = C - mean(C(1:5000));
+
+    C = -C;
     % Plot main line and store handle for legend
     plot_handles(j) = plot(t, C,'Color', color_vec(j) , 'LineWidth', 2);
 
