@@ -182,11 +182,9 @@ negMax = zeros(1,x);
 for j = 1:x
     posMax(j) = max(All_filtCL{j});
     negMax(j) = min(All_filtCL{j});
-
 end
-disp(posMax)
-disp(negMax)
-
+% disp(posMax)
+% disp(negMax)
 
 %% Plotting
 close all
