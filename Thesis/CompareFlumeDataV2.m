@@ -220,7 +220,8 @@ for j = 1:x
     t = All_times{j}(:).';  % Convert to row vector
     C = All_filtCL{j}(:).'; % Convert to row vector
     sd = All_sd{j}(:).';    % Convert to row vector
-    
+    se = sd./sqrt(5); %Standard error for five trials 
+     
     C = C - mean(C(1:5000));
     % Plot main line and store handle for legend
     plot_handles(j) = plot(t, C,'Color', color_vec(j) , 'LineWidth', 2);
@@ -229,7 +230,7 @@ for j = 1:x
     fill_color = hex2rgb(color_vec(j));
     
     % Shaded region (fill) for standard deviation
-    fill([t, fliplr(t)], [C + sd, fliplr(C - sd)], fill_color, 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'HandleVisibility', 'off');
+    fill([t, fliplr(t)], [C + se, fliplr(C - se)], fill_color, 'FaceAlpha', 0.3, 'EdgeColor', 'none', 'HandleVisibility', 'off');
 end
 
 % Create legend using only line handles
