@@ -153,7 +153,7 @@ hold(ag2, 'off')
 figure(3)
 ab1 = subplot(1, 2, 1);
 hold(ab1, 'on');
-xlabel(ab1, '$\Gamma^* /y^*$');
+xlabel(ab1, '$y^*/ \Gamma^*$');
 ylabel(ab1, '$C_{L, max}$');
 title(ab1, 'Maximum Lift');
 %xlim(ab1, [10 40]);
@@ -187,25 +187,26 @@ legend('show')
 hold(ab1, 'off')
 
 ab2 = subplot(1, 2, 2);
-hold(ab2, 'on');
-xlabel(ab2, '$\Gamma^* /y^*$');
-ylabel(ab2, '$r^*_{max}$');
-title(ab2, 'Maximum Laser Displacement');
-%xlim(ab2, [10 40]);
-%ylim(ab2, [-0.4 0.4]);
-grid(ab2, 'on');
-scatter(highFlex(:,3)./highFlex(:,2), highFlex(:,6), 50, 'filled', ...
+hold(ar2, 'on');
+xlabel(ar2, 'Encounter Location $y^* = y/L$');
+ylabel(ar2, '$r^*_{max}$');
+title(ar2, 'Maximum Laser Displacement');
+%xlim(ar2, [10 40]);
+%ylim(ar2, [-0.4 0.4]);
+grid(ar2, 'on');
+scatter(highFlex(:,2), highFlex(:,6), 50, 'filled', ...
     'MarkerFaceColor', color_vec(1), ...
     'MarkerEdgeColor', color_vec(1), ...
     'DisplayName', leg_vec(1));
-scatter(lowFlex(:,3)./lowFlex(:,2), lowFlex(:,6), 50, 'filled', ...
+scatter(lowFlex(:,2), lowFlex(:,6), 50, 'filled', ...
     'MarkerFaceColor', color_vec(2), ...
     'MarkerEdgeColor', color_vec(2), ...
     'DisplayName', leg_vec(2));
-scatter(rigid(:,3)./rigid(:,2), rigid(:,6), 50, 'filled', ...
+scatter(rigid(:,2), rigid(:,6), 50, 'filled', ...
     'MarkerFaceColor', color_vec(3), ...
     'MarkerEdgeColor', color_vec(3), ...
     'DisplayName', leg_vec(3));
 legend('show')
-hold(ab2, 'off')
+hold(ar2, 'off')
 
+figure(2)
