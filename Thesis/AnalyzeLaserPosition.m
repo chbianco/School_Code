@@ -14,7 +14,7 @@ set(groot, 'defaultLineLineWidth', 2);
 set(groot, 'defaultFigureColor', 'white');
 
 %% Number of runs, color, legend
-n = 2;
+n = 1;
 color_vec = ["#0072BD", "#D95319", "#EDB120"];  % String array
 legend_vec = ["High Flex", "Low Flex"]; % String array
 
@@ -93,6 +93,8 @@ for i = 1:n
 
     % Compute current non-dimensional distance from the starting position
     normDistance = sqrt(normX.^2 + normY.^2);
+
+    %% Find RMS
 
     %% Plot Data for Current Run on the Same Axes
     % Add a run-specific label using DisplayName so legends can distinguish runs.
