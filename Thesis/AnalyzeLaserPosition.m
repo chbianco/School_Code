@@ -79,7 +79,7 @@ for i = 1:n
 
     %% Extract Data and Compute Non-dimensional Quantities
     % Non-dimensionalize time: multiply by (speed)/(chord) and add offset from file delay and starting time scaling
-    time = (trackingData(:, 1) + timeStart) .* 0.35 ./ 0.1 + 10; 
+    time = (trackingData(:, 1) + timeStart) .* 0.35 ./ 0.1; 
 
     % Extract x and y positions
     x = trackingData(:, 2);
