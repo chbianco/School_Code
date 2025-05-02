@@ -70,15 +70,15 @@ for i = 1:x
 
     figure(1)
     hold on
-    errorbar(aoa,allData.CL_Mean,allData.CL_Std, 'DisplayName', leg);
+    errorbar(aoa,allData.CL_Mean,allData.CL_Std./sqrt(14), 'DisplayName', leg);
 
     figure(2)
     hold on
-    errorbar(aoa,CD - drag_bias + drag_at_zero ,allData.CD_Std, 'DisplayName', leg);
+    errorbar(aoa,CD - drag_bias + drag_at_zero ,allData.CD_Std./sqrt(14), 'DisplayName', leg);
 
     figure(3)
     hold on
-    errorbar(aoa,allData.CM_Mean,allData.CM_Std,  'DisplayName', leg);
+    errorbar(aoa,allData.CM_Mean,allData.CM_Std./sqrt(14),  'DisplayName', leg);
 
 end
 
