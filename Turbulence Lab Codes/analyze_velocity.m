@@ -234,3 +234,65 @@ for i = 1:3
     Re_macro(i) = Speeds(i)*D/nu;
     Re_turb(i) = rms(up(:,i))*Taylor_x(i)/nu;
 end
+
+%% Longitudinal and transverse functions
+f_vec = cell(1,3);
+g_vec = cell(1,3);
+
+for i = 1:3
+%Compute f and g
+f = u_t_corrs{i};
+g = v_t_corrs{i};
+r = u_x_lags{i}';
+
+%Compute predicted g from the isotropic relations
+dfdr = gradient(f, r);
+g_pred = f + 0.5.*r.*dfdr;
+
+%Plot g and g predicted
+figure;
+plot(r, g_pred, 'r--', r, g, 'b-', 'LineWidth',1.5)
+xlabel('Spatial lag r [m]')
+ylabel('Transverse correlation g(r)')
+legend('measured g','predicted g','Location','Best')
+grid on
+title('Isotropy test: measured vs.\ predicted transverse correlation')
+
+end
+
+%% Spatial Power Spectra
+
+%initialize values for the spectrum 
+nfft = 2^14;
+window = hamming(nfft);
+nover = nfft/2;
+
+digiRate = 51200;
+dt = 1/digiRate;
+colors = lines(3);
+
+figure; hold on
+
+for i = 1:3
+    U = Speeds(i);
+
+    %Temporal PSD
+    [Suu, freq] = pwelch(up(:, i), window, nover, nfft, digiRate, 'one-sided');
+
+    % Map to spatial k with Taylor hypothesis
+    k = 2*pi * freq / U; % [rad/m]
+    E  = U * Suu; % spatial spectrum [ (m^3/s^2) * m ]
+
+    % Plot raw spatial spectra
+    subplot(1, 3, i)
+    loglog(k, E, 'Color', colors(i,:));
+    title(sprintf('U=%.1f m/s',U))
+    xlim([0, 10^5])
+    ylim([10^(-13), 10^(-2)])
+    xlabel('k')
+    ylabel('Spatial Spectrum')
+
+
+
+
+end
