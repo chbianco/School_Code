@@ -262,7 +262,7 @@ end
 
 %% Spatial Power Spectra
 
-%initialize values for the spectrum 
+%initialize values for the spectrum
 nfft = 2^14;
 window = hamming(nfft);
 nover = nfft/2;
@@ -291,8 +291,5 @@ for i = 1:3
     ylim([10^(-13), 10^(-2)])
     xlabel('k')
     ylabel('Spatial Spectrum')
-
-
-
 
 end
