@@ -271,7 +271,9 @@ digiRate = 51200;
 dt = 1/digiRate;
 colors = lines(3);
 
-figure; hold on
+figure(1); hold on
+figure(2); hold on
+figure(3); hold on
 
 for i = 1:3
     U = Speeds(i);
@@ -284,6 +286,7 @@ for i = 1:3
     E  = U * Suu; % spatial spectrum [ (m^3/s^2) * m ]
 
     % Plot raw spatial spectra
+    figure(1)
     subplot(1, 3, i)
     loglog(k, E, 'Color', colors(i,:));
     title(sprintf('U=%.1f m/s',U))
@@ -291,5 +294,34 @@ for i = 1:3
     ylim([10^(-13), 10^(-2)])
     xlabel('k')
     ylabel('Spatial Spectrum')
+
+    %Scale spectra by inertia/Kolmogorov
+    E_nk = E /((eps(i)*nu^5)^1/4);
+    k_nk = k*nK(i);
+
+    %Plot inertial scaled PSD
+    figure(2)
+    subplot(1, 3, i)
+    loglog(k_nk, E_nk, 'Color', colors(i,:));
+    title(sprintf('U=%.1f m/s',U))
+    %xlim([0, 10^5])
+    %ylim([10^(-13), 10^(-2)])
+    xlabel('$\eta_k$k')
+    ylabel('$E(k)/(\epsilon\nu^5)^{1/4}$')
+
+    %Scale spectra by outer
+    E_D = E / (Speeds(i)*D);
+    k_D = k*D;
+
+    %Plot outer scaled PSD
+    figure(3)
+    subplot(1, 3, i)
+    loglog(k_D, E_D, 'Color', colors(i,:));
+    title(sprintf('U=%.1f m/s',U))
+    %xlim([0, 10^5])
+    %ylim([10^(-13), 10^(-2)])
+    xlabel('Dk')
+    ylabel('$E(k)/(UD)$')
+    
 
 end
