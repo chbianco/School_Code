@@ -322,6 +322,4 @@ for i = 1:3
     %ylim([10^(-13), 10^(-2)])
     xlabel('Dk')
     ylabel('$E(k)/(UD)$')
-    
-
 end
