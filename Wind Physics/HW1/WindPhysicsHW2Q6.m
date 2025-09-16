@@ -123,14 +123,14 @@ grid on
 %Plot sonic
 e1 = errorbar(temp_av_sonic, sonic_heights, temp_std_sonic, 'horizontal', '*c', 'LineWidth',2);
 %Plot cup
-e2 = errorbar(temp_av_solo, solo_heights, temp_std_solo, 'horizontal', '*k', 'LineWidth',2);
+e2 = errorbar(temp_av_solo, solo_heights, temp_std_solo, 'horizontal', '*b', 'LineWidth',2);
 
 % Dummy plots for legend only
 h1 = plot(nan, nan, '*c', 'LineWidth', 2);
 h2 = plot(nan, nan, '*k', 'LineWidth', 2);
 
 % Legend
-legend([h1 h2], {'Sonic','Stand Alone Measurement'}, 'Location', 'best')
+legend([h1 h2], {'Sonic','Stand Alone Measurement'}, 'Location', 'southwest')
 
 hold off
 
