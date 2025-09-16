@@ -18,32 +18,33 @@ fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1';
 
 data = load(fullfile(fileDir, '08_28_2019_22_00_00_000.mat'));
 
-%Convert UTC datenum to datetime. Don't think we need but keeping just in case
-% thyme = time_UTC;
-% time = NaT(size(thyme));
-% for ti = 1 : length(thyme)
-%     time(ti) = datetime(floor(thyme(ti)), 'ConvertFrom', 'datenum') ...
-%         + days(rem(thyme(ti),1)); % convert datenum to datetime object
-% end
-% time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
-% time.TimeZone = 'America/Denver'; % shift to NREL time zone
+%% Time conversion
+%Convert UTC datenum to datetime
+thyme = data.time_UTC.val;
+time = NaT(size(thyme));
+for ti = 1 : length(thyme)
+    time(ti) = datetime(floor(thyme(ti)), 'ConvertFrom', 'datenum') ...
+        + days(rem(thyme(ti),1)); % convert datenum to datetime object
+end
+time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
+time.TimeZone = 'America/Denver'; % shift to NREL time zone
 
 
 
 %% Part a: Horizontal wind speed profile
 %Initialize measurement height
 sonic_heights = [15,41,61, 74, 100, 119];
-U_av_sonic = NaN(length(sonic_heights));
-U_std_sonic = NaN(length(sonic_heights));
+U_av_sonic = NaN(1, length(sonic_heights));
+U_std_sonic = NaN(1, length(sonic_heights));
 
 cup_heights = [3, 10, 30, 38, 55, 80, 87, 105, 122, 130];
-U_av_cup = NaN(length(cup_heights));
-U_std_cup = NaN(length(cup_heights)); 
+U_av_cup = NaN(1, length(cup_heights));
+U_std_cup = NaN(1, length(cup_heights)); 
 
 %Calculate horizontal wind speed from sonic anemometers
 for i = 1:length(sonic_heights)
     sonic_height = sonic_heights(i);
-    U = sqrt(data.(strcat('Sonic_u_',num2str(sonic_height),'m')).val.^2 + data.(strcat('Sonic_v_',num2str(sonic_height),'m')).val.^2);
+    U = sqrt(data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val.^2 + data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val.^2);
     
     U_av_sonic(i) = mean(U);
     U_std_sonic(i) = std(U);
@@ -86,20 +87,20 @@ legend([h1 h2], {'Sonic','Cup'}, 'Location', 'best')
 
 hold off
 
-%% Part b: Temperature readings
+%% Part b and c: Temperature readings
 %Initialize measurement height
 sonic_heights = [15,41,61,74,100,119];
-temp_av_sonic = NaN(length(sonic_heights));
-temp_std_sonic = NaN(length(sonic_heights));
+temp_av_sonic = NaN(1, length(sonic_heights));
+temp_std_sonic = NaN(1, length(sonic_heights));
 
 solo_heights = [3, 38, 87];
-temp_av_solo = NaN(length(solo_heights));
-temp_std_solo = NaN(length(solo_heights));
+temp_av_solo = NaN(1, length(solo_heights));
+temp_std_solo = NaN(1, length(solo_heights));
 
 %Extract temp from sonic anemometers
 for i = 1:length(sonic_heights)
     sonic_height = sonic_heights(i);
-    temp = data.(strcat('Sonic_Temp_clean', numtostr(sonic_height), 'm')).val;
+    temp = data.(strcat('Sonic_Temp_clean_', num2str(sonic_height), 'm')).val;
     
     temp_av_sonic(i) = mean(temp);
     temp_std_sonic(i) = std(temp);
@@ -107,17 +108,109 @@ end
 
 %Extract temp from stand alone measurements
 for i = 1:length(solo_heights)
-    solo_height = cup_heights(i);
+    solo_height = solo_heights(i);
+    temp = data.(strcat('Air_Temp_', num2str(solo_height), 'm')).val;
     
-    %Now, we need to take into account the naming convention
-    fn = fieldnames(data);
-    matchIdx = contains(fn, 'Cup_WS_') & contains(fn, strcat(num2str(cup_height),'m'));
-    match = fn(matchIdx);
-    
-    %Extract U
-    U = data.(match{1}).val;
-    
-    %Do mean and standard deviation
-    U_av_cup(i) = mean(U);
-    U_std_cup(i) = std(U);
+    temp_av_solo(i) = mean(temp);
+    temp_std_solo(i) = std(temp);
 end
+
+%Make figure
+figure(2); hold on;
+xlabel('Temperature (C)');
+ylabel('z (m)');
+grid on
+
+%Plot sonic
+e1 = errorbar(temp_av_sonic, sonic_heights, temp_std_sonic, 'horizontal', '*c', 'LineWidth',2);
+%Plot cup
+e2 = errorbar(temp_av_solo, solo_heights, temp_std_solo, 'horizontal', '*b', 'LineWidth',2);
+
+% Dummy plots for legend only
+h1 = plot(nan, nan, '*c', 'LineWidth', 2);
+h2 = plot(nan, nan, '*k', 'LineWidth', 2);
+
+%Define and plot the adiabatic lapse rate
+h = linspace(0,120,1000);
+lapse_rate = (-9.8/1000).*h + 30;
+h3 = plot(lapse_rate, h);
+
+% Legend
+legend([h1 h2 h3], {'Sonic','Stand Alone Measurement', 'Adiabatic Lapse Rate'}, 'Location', 'southwest')
+
+hold off
+%Based on these graphs, the temperature readings from the sonic anemometers
+%at z = 41m and 74m are quite low, and deviate wildly from all other
+%measurements. For that reason, these points look unreliable. 
+
+%In terms of stability, if we ignore the temperature readings at z = 41m
+%and 74m, we can see that the average slope is less steep (more negative)
+%than the adiabatic lapse rate of -9.8 K/km. In other words, the lapse rate 
+%is super adiabatic.This indicates static instability. Given that these 
+%measurements were taken at 4pm local time, this observation makes sense. 
+%We would expect an unstable mixing layer at this time. However, there is a
+%decent degree of uncertainty. As mentioned previously, we have at least
+%two large outliers. Additionally, the temperature reading at z = 119 m
+%doesn't fall on the qualitatively observed slope. Finally, the slope
+%doesn't appear that much flatter than the adiabatic case, so small
+%variations in temperature could change the characterization. 
+
+%% Part d: August 2019 
+%Load data
+aug_data = load(fullfile(fileDir, '2019_August.mat'));
+
+%Do time conversion
+%Convert UTC datenum to datetime
+thyme_all = aug_data.all_data.Virtual_Potential_Temperature_3m.date;
+time_all = NaT(size(thyme_all));
+for ti = 1 : length(thyme_all)
+    time_all(ti) = datetime(floor(thyme_all(ti)), 'ConvertFrom', 'datenum') ...
+        + days(rem(thyme_all(ti),1)); % convert datenum to datetime object
+end
+time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
+time.TimeZone = 'America/Denver'; % shift to NREL time zone
+
+%From manual inspection, the entry we want to look at in the large dataset
+%is 3986
+
+aug_temp_ave_sonic = NaN(1, length(sonic_heights));
+aug_temp_std_sonic = NaN(1, length(sonic_heights));
+
+aug_temp_ave_solo = NaN(1, length(solo_heights));
+
+
+%Extract air temp from sonic anemometers
+for i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    aug_temp_ave_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_mean')).val(3986);
+    aug_temp_std_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_sdev')).val(3986);
+end
+
+%Extract air temp from stand alone measurements
+for i = 1:length(solo_heights)
+    sonic_height = solo_heights(i);
+    aug_temp_ave_solo(i) = aug_data.all_data.(strcat('Air_Temperature_',num2str(solo_height),'m')).val(3986);
+end
+
+%Make plot
+figure(3)
+xlabel('Temperature (C)');
+ylabel('z (m)');
+title('Average temperature from August 2019 dataset')
+grid on
+hold on
+
+%Plot temperatures
+errorbar(aug_temp_ave_sonic, sonic_heights, aug_temp_std_sonic, 'horizontal', '*c', 'LineWidth',2)
+plot(aug_temp_ave_solo, solo_heights, '*k', 'LineWidth',2)
+
+legend({'Sonic','Stand Alone Measurement'}, 'Location', 'southwest')
+
+
+hold off
+
+
+%Extract and plot virtual potential temp
+
+
+
