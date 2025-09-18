@@ -27,4 +27,13 @@ plot(vpt_d, z)
 hold off
 
 %% Wet air
-vpt_d = ((20 - 0.01.*z)./((1-2.25577*10^(-5).*z).^(5.25588))).*A.*(20-10.*(z/2000));
+vpt_w = ((20 - 0.01.*z)./((1-2.25577*10^(-5).*z).^(5.25588))).*(1000).*(20-10.*(z/2000));
+figure(2)
+xlabel('Virtual Potential Temperature')
+ylabel('z (m)')
+grid on 
+hold on 
+
+plot(vpt_w, z)
+
+hold off
