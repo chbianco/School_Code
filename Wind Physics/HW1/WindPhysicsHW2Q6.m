@@ -14,7 +14,10 @@ set(groot, 'defaultFigureColor', 'white');
 
 %% Loading Data 
 %REMEMBER TO CHANGE THIS IF ON WINDOWS cause apples hates me 
-fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1';
+%fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1'; %Mac
+
+fileDir = 'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'; %Windows
+
 
 data = load(fullfile(fileDir, '08_28_2019_22_00_00_000.mat'));
 
@@ -221,11 +224,41 @@ end
 figure(4)
 xlabel('Virtual Potential Temperature');
 ylabel('z (m)');
-title('Virtual potential temperature from August 2019 dataset')
+xlim([43 46]);
+title('August 2019 dataset')
 grid on
 hold on
 
-plot(aug_vpt , solo_heights, '*r', 'LineWidth',2)
+plot(aug_vpt -273, solo_heights, '*r', 'LineWidth',2)
 hold off
+
+%% d short response
+%As can be seen from the temperature data, the virtual potential
+%temperature (VPT) is much higher than the raw temperature. The virtual potential
+%is also unreasonably high, even for the summer. This is likely because,
+%according to the report, a p0 of 100 kpa was used to calculate VPT.
+%However, the data was taken at an elevation of 6000 feet. According to
+%engineering toolbox, the pressure at 6000 feet is 81.2 kpa, much lower. If
+%this value was used, the temperature values would be lower and likely more
+%sensical. 
+
+%% Part e
+% We can correct the virtual potential temperature measurements by
+% multiplying them by the factor we get from changing p0 to 82 kpa. To find
+%This, we take (82/100)^(R/Cp), where R/Cp is given as 0.286. Thus,
+%multiplying by 0.94 should give us better temperature measurements. 
+
+figure(5)
+xlabel('Corrected Virtual Potential Temperature');
+ylabel('z (m)');
+xlim([24 27])
+title('August 2019 dataset')
+grid on
+hold on
+
+plot(aug_vpt.*0.94 -273, solo_heights, '*r', 'LineWidth',2)
+hold off
+
+%As can be seen, this gives us much more reasonable temperature values. 
 
 
