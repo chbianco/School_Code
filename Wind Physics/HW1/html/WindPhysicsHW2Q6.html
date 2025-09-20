@@ -1,0 +1,664 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      -->
+<title>WindPhysicsHW2Q6</title>
+<meta name="generator" content="MATLAB 24.2">
+<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+<meta name="DC.date" content="2025-09-20">
+<meta name="DC.source" content="WindPhysicsHW2Q6.m">
+<style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style>
+</head>
+<body>
+<div class="content">
+<h2>Contents</h2>
+<div>
+<ul>
+<li>
+<a href="#1">PREAMBLE</a>
+</li>
+<li>
+<a href="#2">Loading Data</a>
+</li>
+<li>
+<a href="#3">Time conversion</a>
+</li>
+<li>
+<a href="#4">Part a: Horizontal wind speed profile</a>
+</li>
+<li>
+<a href="#5">Part b and c: Temperature readings</a>
+</li>
+<li>
+<a href="#6">Part b and c short answer</a>
+</li>
+<li>
+<a href="#7">Part d: August 2019</a>
+</li>
+<li>
+<a href="#8">d short response</a>
+</li>
+<li>
+<a href="#9">Part e</a>
+</li>
+</ul>
+</div>
+<h2 id="1">PREAMBLE</h2>
+<pre class="codeinput">close <span class="string">all</span>;
+clear <span class="string">variables</span>;
+clc;
+
+set(groot, <span class="string">'defaultTextInterpreter'</span>, <span class="string">'Latex'</span>);
+set(groot, <span class="string">'defaultLegendInterpreter'</span>, <span class="string">'Latex'</span>);
+set(groot, <span class="string">'defaultAxesTickLabelInterpreter'</span>,<span class="string">'latex'</span>);
+set(groot, <span class="string">'defaultLegendInterpreter'</span>,<span class="string">'latex'</span>);
+set(groot, <span class="string">'defaultTextFontSize'</span>, 12);
+set(groot, <span class="string">'defaultAxesFontSize'</span>, 16);
+set(groot, <span class="string">'defaultLineLineWidth'</span>, 2);
+set(groot, <span class="string">'defaultFigureColor'</span>, <span class="string">'white'</span>);
+</pre>
+<h2 id="2">Loading Data</h2>
+<pre class="codeinput">
+<span class="comment">%REMEMBER TO CHANGE THIS IF ON WINDOWS cause apples hates me</span>
+<span class="comment">%fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1'; %Mac</span>
+
+fileDir = <span class="string">'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'</span>; <span class="comment">%Windows</span>
+
+
+data = load(fullfile(fileDir, <span class="string">'08_28_2019_22_00_00_000.mat'</span>));
+</pre>
+<h2 id="3">Time conversion</h2>
+<pre class="codeinput">
+<span class="comment">%Convert UTC datenum to datetime</span>
+thyme = data.time_UTC.val;
+time = NaT(size(thyme));
+<span class="keyword">for</span> ti = 1 : length(thyme)
+    time(ti) = datetime(floor(thyme(ti)), <span class="string">'ConvertFrom'</span>, <span class="string">'datenum'</span>) <span class="keyword">...</span>
+        + days(rem(thyme(ti),1)); <span class="comment">% convert datenum to datetime object</span>
+<span class="keyword">end</span>
+time.TimeZone = <span class="string">'Etc/UTC'</span>; <span class="comment">% add TimeZone field (UTC time)</span>
+time.TimeZone = <span class="string">'America/Denver'</span>; <span class="comment">% shift to NREL time zone</span>
+</pre>
+<h2 id="4">Part a: Horizontal wind speed profile</h2>
+<pre class="codeinput">
+<span class="comment">%Initialize measurement height</span>
+sonic_heights = [15,41,61, 74, 100, 119];
+U_av_sonic = NaN(1, length(sonic_heights));
+U_std_sonic = NaN(1, length(sonic_heights));
+
+cup_heights = [3, 10, 30, 38, 55, 80, 87, 105, 122, 130];
+U_av_cup = NaN(1, length(cup_heights));
+U_std_cup = NaN(1, length(cup_heights));
+
+<span class="comment">%Calculate horizontal wind speed from sonic anemometers</span>
+<span class="keyword">for</span> i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    U = sqrt(data.(strcat(<span class="string">'Sonic_x_clean_'</span>,num2str(sonic_height),<span class="string">'m'</span>)).val.^2 + data.(strcat(<span class="string">'Sonic_y_clean_'</span>,num2str(sonic_height),<span class="string">'m'</span>)).val.^2);
+
+    U_av_sonic(i) = mean(U);
+    U_std_sonic(i) = std(U);
+<span class="keyword">end</span>
+
+<span class="comment">%Extract horizontal wind speed from cup anemometers</span>
+<span class="keyword">for</span> i = 1:length(cup_heights)
+    cup_height = cup_heights(i);
+
+    <span class="comment">%Now, we need to take into account the naming convention</span>
+    fn = fieldnames(data);
+    matchIdx = contains(fn, <span class="string">'Cup_WS_'</span>) &amp; contains(fn, strcat(num2str(cup_height),<span class="string">'m'</span>));
+    match = fn(matchIdx);
+
+    <span class="comment">%Extract U</span>
+    U = data.(match{1}).val;
+
+    <span class="comment">%Do mean and standard deviation</span>
+    U_av_cup(i) = mean(U);
+    U_std_cup(i) = std(U);
+<span class="keyword">end</span>
+
+<span class="comment">%Make the figure</span>
+figure(1); hold <span class="string">on</span>;
+xlabel(<span class="string">'Horizontal Wind Speed (m/s)'</span>);
+ylabel(<span class="string">'z (m)'</span>);
+grid <span class="string">on</span>
+
+<span class="comment">%Plot sonic</span>
+e1 = errorbar(U_av_sonic, sonic_heights, U_std_sonic, <span class="string">'horizontal'</span>, <span class="string">'*c'</span>, <span class="string">'LineWidth'</span>,2);
+<span class="comment">%Plot cup</span>
+e2 = errorbar(U_av_cup, cup_heights, U_std_cup, <span class="string">'horizontal'</span>, <span class="string">'*k'</span>, <span class="string">'LineWidth'</span>,2);
+
+<span class="comment">% Dummy plots for legend only</span>
+h1 = plot(nan, nan, <span class="string">'*c'</span>, <span class="string">'LineWidth'</span>, 2);
+h2 = plot(nan, nan, <span class="string">'*k'</span>, <span class="string">'LineWidth'</span>, 2);
+
+<span class="comment">% Legend</span>
+legend([h1 h2], {<span class="string">'Sonic'</span>,<span class="string">'Cup'</span>}, <span class="string">'Location'</span>, <span class="string">'best'</span>)
+
+hold <span class="string">off</span>
+</pre>
+<img vspace="5" hspace="5" src="WindPhysicsHW2Q6_01.png" alt=""> <h2 id="5">Part b and c: Temperature readings</h2>
+<pre class="codeinput">
+<span class="comment">%Initialize measurement height</span>
+sonic_heights = [15,41,61,74,100,119];
+temp_av_sonic = NaN(1, length(sonic_heights));
+temp_std_sonic = NaN(1, length(sonic_heights));
+
+solo_heights = [3, 38, 87];
+temp_av_solo = NaN(1, length(solo_heights));
+temp_std_solo = NaN(1, length(solo_heights));
+
+<span class="comment">%Extract temp from sonic anemometers</span>
+<span class="keyword">for</span> i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    temp = data.(strcat(<span class="string">'Sonic_Temp_clean_'</span>, num2str(sonic_height), <span class="string">'m'</span>)).val;
+
+    temp_av_sonic(i) = mean(temp);
+    temp_std_sonic(i) = std(temp);
+<span class="keyword">end</span>
+
+<span class="comment">%Extract temp from stand alone measurements</span>
+<span class="keyword">for</span> i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    temp = data.(strcat(<span class="string">'Air_Temp_'</span>, num2str(solo_height), <span class="string">'m'</span>)).val;
+
+    temp_av_solo(i) = mean(temp);
+    temp_std_solo(i) = std(temp);
+<span class="keyword">end</span>
+
+<span class="comment">%Make figure</span>
+figure(2); hold <span class="string">on</span>;
+xlabel(<span class="string">'Temperature (C)'</span>);
+ylabel(<span class="string">'z (m)'</span>);
+grid <span class="string">on</span>
+
+<span class="comment">%Plot sonic</span>
+e1 = errorbar(temp_av_sonic, sonic_heights, temp_std_sonic, <span class="string">'horizontal'</span>, <span class="string">'*c'</span>, <span class="string">'LineWidth'</span>,2);
+<span class="comment">%Plot cup</span>
+e2 = errorbar(temp_av_solo, solo_heights, temp_std_solo, <span class="string">'horizontal'</span>, <span class="string">'*b'</span>, <span class="string">'LineWidth'</span>,2);
+
+<span class="comment">% Dummy plots for legend only</span>
+h1 = plot(nan, nan, <span class="string">'*c'</span>, <span class="string">'LineWidth'</span>, 2);
+h2 = plot(nan, nan, <span class="string">'*k'</span>, <span class="string">'LineWidth'</span>, 2);
+
+<span class="comment">%Define and plot the adiabatic lapse rate</span>
+h = linspace(0,120,1000);
+lapse_rate = (-9.8/1000).*h + 30;
+h3 = plot(lapse_rate, h);
+
+<span class="comment">% Legend</span>
+legend([h1 h2 h3], {<span class="string">'Sonic'</span>,<span class="string">'Stand Alone Measurement'</span>, <span class="string">'Adiabatic Lapse Rate'</span>}, <span class="string">'Location'</span>, <span class="string">'southwest'</span>)
+
+hold <span class="string">off</span>
+<span class="comment">%Based on these graphs, the temperature readings from the sonic anemometers</span>
+<span class="comment">%at z = 41m and 74m are quite low, and deviate wildly from all other</span>
+<span class="comment">%measurements. For that reason, these points look unreliable.</span>
+</pre>
+<img vspace="5" hspace="5" src="WindPhysicsHW2Q6_02.png" alt=""> <h2 id="6">Part b and c short answer</h2>
+<pre class="codeinput">
+<span class="comment">%In terms of stability, if we ignore the temperature readings at z = 41m</span>
+<span class="comment">%and 74m, we can see that the average slope is less steep (more negative)</span>
+<span class="comment">%than the adiabatic lapse rate of -9.8 K/km. In other words, the lapse rate</span>
+<span class="comment">%is super adiabatic.This indicates static instability. Given that these</span>
+<span class="comment">%measurements were taken at 4pm local time, this observation makes sense.</span>
+<span class="comment">%We would expect an unstable mixing layer at this time. However, there is a</span>
+<span class="comment">%decent degree of uncertainty. As mentioned previously, we have at least</span>
+<span class="comment">%two large outliers. Additionally, the temperature reading at z = 119 m</span>
+<span class="comment">%doesn't fall on the qualitatively observed slope. Finally, the slope</span>
+<span class="comment">%doesn't appear that much flatter than the adiabatic case, so small</span>
+<span class="comment">%variations in temperature could change the characterization.</span>
+</pre>
+<h2 id="7">Part d: August 2019</h2>
+<pre class="codeinput">
+<span class="comment">%Load data</span>
+aug_data = load(fullfile(fileDir, <span class="string">'2019_August.mat'</span>));
+
+<span class="comment">%Do time conversion</span>
+<span class="comment">%Convert UTC datenum to datetime</span>
+thyme_all = aug_data.all_data.Virtual_Potential_Temperature_3m.date;
+time_all = NaT(size(thyme_all));
+<span class="keyword">for</span> ti = 1 : length(thyme_all)
+    time_all(ti) = datetime(floor(thyme_all(ti)), <span class="string">'ConvertFrom'</span>, <span class="string">'datenum'</span>) <span class="keyword">...</span>
+        + days(rem(thyme_all(ti),1)); <span class="comment">% convert datenum to datetime object</span>
+<span class="keyword">end</span>
+time.TimeZone = <span class="string">'Etc/UTC'</span>; <span class="comment">% add TimeZone field (UTC time)</span>
+time.TimeZone = <span class="string">'America/Denver'</span>; <span class="comment">% shift to NREL time zone</span>
+
+<span class="comment">%From manual inspection, the entry we want to look at in the large dataset</span>
+<span class="comment">%is 3986</span>
+
+aug_temp_ave_sonic = NaN(1, length(sonic_heights));
+aug_temp_std_sonic = NaN(1, length(sonic_heights));
+
+aug_temp_ave_solo = NaN(1, length(solo_heights));
+
+
+<span class="comment">%Extract air temp from sonic anemometers</span>
+<span class="keyword">for</span> i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    aug_temp_ave_sonic(i) = aug_data.all_data.(strcat(<span class="string">'Raw_Sonic_Temp_'</span>,num2str(sonic_height),<span class="string">'_mean'</span>)).val(3986);
+    aug_temp_std_sonic(i) = aug_data.all_data.(strcat(<span class="string">'Raw_Sonic_Temp_'</span>,num2str(sonic_height),<span class="string">'_sdev'</span>)).val(3986);
+<span class="keyword">end</span>
+
+<span class="comment">%Extract air temp from stand alone measurements</span>
+<span class="keyword">for</span> i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    aug_temp_ave_solo(i) = aug_data.all_data.(strcat(<span class="string">'Air_Temperature_'</span>,num2str(solo_height),<span class="string">'m'</span>)).val(3986);
+<span class="keyword">end</span>
+
+<span class="comment">%Make plot</span>
+figure(3)
+xlabel(<span class="string">'Temperature (C)'</span>);
+ylabel(<span class="string">'z (m)'</span>);
+title(<span class="string">'Average temperature from August 2019 dataset'</span>)
+grid <span class="string">on</span>
+hold <span class="string">on</span>
+
+<span class="comment">%Plot temperatures</span>
+errorbar(aug_temp_ave_sonic, sonic_heights, aug_temp_std_sonic, <span class="string">'horizontal'</span>, <span class="string">'*c'</span>, <span class="string">'LineWidth'</span>,2)
+plot(aug_temp_ave_solo -273.15 , solo_heights, <span class="string">'*k'</span>, <span class="string">'LineWidth'</span>,2)
+legend({<span class="string">'Sonic'</span>,<span class="string">'Stand Alone Measurement'</span>}, <span class="string">'Location'</span>, <span class="string">'southwest'</span>)
+
+hold <span class="string">off</span>
+
+solo_heights = [3,38,87,122];
+<span class="comment">%Extract virtual potential temp</span>
+aug_vpt = NaN(1, length(solo_heights));
+<span class="keyword">for</span> i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    aug_vpt(i) = aug_data.all_data.(strcat(<span class="string">'Virtual_Potential_Temperature_'</span>,num2str(solo_height),<span class="string">'m'</span>)).val(3986);
+<span class="keyword">end</span>
+
+<span class="comment">%Make plot</span>
+figure(4)
+xlabel(<span class="string">'Virtual Potential Temperature'</span>);
+ylabel(<span class="string">'z (m)'</span>);
+xlim([43 46]);
+title(<span class="string">'August 2019 dataset'</span>)
+grid <span class="string">on</span>
+hold <span class="string">on</span>
+
+plot(aug_vpt -273, solo_heights, <span class="string">'*r'</span>, <span class="string">'LineWidth'</span>,2)
+hold <span class="string">off</span>
+</pre>
+<img vspace="5" hspace="5" src="WindPhysicsHW2Q6_03.png" alt=""> <img vspace="5" hspace="5" src="WindPhysicsHW2Q6_04.png" alt=""> <h2 id="8">d short response</h2>
+<pre class="codeinput">
+<span class="comment">%As can be seen from the temperature data, the virtual potential</span>
+<span class="comment">%temperature (VPT) is much higher than the raw temperature. The virtual potential</span>
+<span class="comment">%is also unreasonably high, even for the summer. This is likely because,</span>
+<span class="comment">%according to the report, a p0 of 100 kpa was used to calculate VPT.</span>
+<span class="comment">%However, the data was taken at an elevation of 6000 feet. According to</span>
+<span class="comment">%engineering toolbox, the pressure at 6000 feet is 81.2 kpa, much lower. If</span>
+<span class="comment">%this value was used, the temperature values would be lower and likely more</span>
+<span class="comment">%sensical.</span>
+</pre>
+<h2 id="9">Part e</h2>
+<p>We can correct the virtual potential temperature measurements by multiplying them by the factor we get from changing p0 to 82 kpa. To find</p>
+<pre class="codeinput">
+<span class="comment">%This, we take (82/100)^(R/Cp), where R/Cp is given as 0.286. Thus,</span>
+<span class="comment">%multiplying by 0.94 should give us better temperature measurements.</span>
+
+figure(5)
+xlabel(<span class="string">'Corrected Virtual Potential Temperature'</span>);
+ylabel(<span class="string">'z (m)'</span>);
+xlim([24 27])
+title(<span class="string">'August 2019 dataset'</span>)
+grid <span class="string">on</span>
+hold <span class="string">on</span>
+
+plot(aug_vpt.*0.94 -273, solo_heights, <span class="string">'*r'</span>, <span class="string">'LineWidth'</span>,2)
+hold <span class="string">off</span>
+
+<span class="comment">%As can be seen, this gives us much more reasonable temperature values. The</span>
+<span class="comment">%slope here is negative, indicating a super-adiabatyic, or unstable,</span>
+<span class="comment">%bondary layer. This matches up with the conclusions from the temperature</span>
+<span class="comment">%data from part c. These values are also much closer to the values from</span>
+<span class="comment">%part c, but don't have the same two values that are much lower than the</span>
+<span class="comment">%rest, indicating that those two are in fact outliers.</span>
+</pre>
+<img vspace="5" hspace="5" src="WindPhysicsHW2Q6_05.png" alt=""> <p class="footer">
+<br>
+<a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2024b</a>
+<br>
+</p>
+</div>
+<!--
+##### SOURCE BEGIN #####
+%% PREAMBLE
+close all;
+clear variables;
+clc;
+
+set(groot, 'defaultTextInterpreter', 'Latex');
+set(groot, 'defaultLegendInterpreter', 'Latex');
+set(groot, 'defaultAxesTickLabelInterpreter','latex');
+set(groot, 'defaultLegendInterpreter','latex');
+set(groot, 'defaultTextFontSize', 12);
+set(groot, 'defaultAxesFontSize', 16);
+set(groot, 'defaultLineLineWidth', 2);
+set(groot, 'defaultFigureColor', 'white');
+
+%% Loading Data 
+%REMEMBER TO CHANGE THIS IF ON WINDOWS cause apples hates me 
+%fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1'; %Mac
+
+fileDir = 'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'; %Windows
+
+
+data = load(fullfile(fileDir, '08_28_2019_22_00_00_000.mat'));
+
+%% Time conversion
+%Convert UTC datenum to datetime
+thyme = data.time_UTC.val;
+time = NaT(size(thyme));
+for ti = 1 : length(thyme)
+    time(ti) = datetime(floor(thyme(ti)), 'ConvertFrom', 'datenum') ...
+        + days(rem(thyme(ti),1)); % convert datenum to datetime object
+end
+time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
+time.TimeZone = 'America/Denver'; % shift to NREL time zone
+
+
+
+%% Part a: Horizontal wind speed profile
+%Initialize measurement height
+sonic_heights = [15,41,61, 74, 100, 119];
+U_av_sonic = NaN(1, length(sonic_heights));
+U_std_sonic = NaN(1, length(sonic_heights));
+
+cup_heights = [3, 10, 30, 38, 55, 80, 87, 105, 122, 130];
+U_av_cup = NaN(1, length(cup_heights));
+U_std_cup = NaN(1, length(cup_heights)); 
+
+%Calculate horizontal wind speed from sonic anemometers
+for i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    U = sqrt(data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val.^2 + data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val.^2);
+    
+    U_av_sonic(i) = mean(U);
+    U_std_sonic(i) = std(U);
+end
+
+%Extract horizontal wind speed from cup anemometers
+for i = 1:length(cup_heights)
+    cup_height = cup_heights(i);
+    
+    %Now, we need to take into account the naming convention
+    fn = fieldnames(data);
+    matchIdx = contains(fn, 'Cup_WS_') & contains(fn, strcat(num2str(cup_height),'m'));
+    match = fn(matchIdx);
+    
+    %Extract U
+    U = data.(match{1}).val;
+    
+    %Do mean and standard deviation
+    U_av_cup(i) = mean(U);
+    U_std_cup(i) = std(U);
+end
+
+%Make the figure
+figure(1); hold on; 
+xlabel('Horizontal Wind Speed (m/s)');
+ylabel('z (m)');
+grid on 
+
+%Plot sonic
+e1 = errorbar(U_av_sonic, sonic_heights, U_std_sonic, 'horizontal', '*c', 'LineWidth',2);
+%Plot cup
+e2 = errorbar(U_av_cup, cup_heights, U_std_cup, 'horizontal', '*k', 'LineWidth',2);
+
+% Dummy plots for legend only
+h1 = plot(nan, nan, '*c', 'LineWidth', 2);
+h2 = plot(nan, nan, '*k', 'LineWidth', 2);
+
+% Legend
+legend([h1 h2], {'Sonic','Cup'}, 'Location', 'best')
+
+hold off
+
+%% Part b and c: Temperature readings
+%Initialize measurement height
+sonic_heights = [15,41,61,74,100,119];
+temp_av_sonic = NaN(1, length(sonic_heights));
+temp_std_sonic = NaN(1, length(sonic_heights));
+
+solo_heights = [3, 38, 87];
+temp_av_solo = NaN(1, length(solo_heights));
+temp_std_solo = NaN(1, length(solo_heights));
+
+%Extract temp from sonic anemometers
+for i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    temp = data.(strcat('Sonic_Temp_clean_', num2str(sonic_height), 'm')).val;
+    
+    temp_av_sonic(i) = mean(temp);
+    temp_std_sonic(i) = std(temp);
+end
+
+%Extract temp from stand alone measurements
+for i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    temp = data.(strcat('Air_Temp_', num2str(solo_height), 'm')).val;
+    
+    temp_av_solo(i) = mean(temp);
+    temp_std_solo(i) = std(temp);
+end
+
+%Make figure
+figure(2); hold on;
+xlabel('Temperature (C)');
+ylabel('z (m)');
+grid on
+
+%Plot sonic
+e1 = errorbar(temp_av_sonic, sonic_heights, temp_std_sonic, 'horizontal', '*c', 'LineWidth',2);
+%Plot cup
+e2 = errorbar(temp_av_solo, solo_heights, temp_std_solo, 'horizontal', '*b', 'LineWidth',2);
+
+% Dummy plots for legend only
+h1 = plot(nan, nan, '*c', 'LineWidth', 2);
+h2 = plot(nan, nan, '*k', 'LineWidth', 2);
+
+%Define and plot the adiabatic lapse rate
+h = linspace(0,120,1000);
+lapse_rate = (-9.8/1000).*h + 30;
+h3 = plot(lapse_rate, h);
+
+% Legend
+legend([h1 h2 h3], {'Sonic','Stand Alone Measurement', 'Adiabatic Lapse Rate'}, 'Location', 'southwest')
+
+hold off
+%Based on these graphs, the temperature readings from the sonic anemometers
+%at z = 41m and 74m are quite low, and deviate wildly from all other
+%measurements. For that reason, these points look unreliable. 
+
+%% Part b and c short answer 
+
+%In terms of stability, if we ignore the temperature readings at z = 41m
+%and 74m, we can see that the average slope is less steep (more negative)
+%than the adiabatic lapse rate of -9.8 K/km. In other words, the lapse rate 
+%is super adiabatic.This indicates static instability. Given that these 
+%measurements were taken at 4pm local time, this observation makes sense. 
+%We would expect an unstable mixing layer at this time. However, there is a
+%decent degree of uncertainty. As mentioned previously, we have at least
+%two large outliers. Additionally, the temperature reading at z = 119 m
+%doesn't fall on the qualitatively observed slope. Finally, the slope
+%doesn't appear that much flatter than the adiabatic case, so small
+%variations in temperature could change the characterization. 
+
+%% Part d: August 2019 
+%Load data
+aug_data = load(fullfile(fileDir, '2019_August.mat'));
+
+%Do time conversion
+%Convert UTC datenum to datetime
+thyme_all = aug_data.all_data.Virtual_Potential_Temperature_3m.date;
+time_all = NaT(size(thyme_all));
+for ti = 1 : length(thyme_all)
+    time_all(ti) = datetime(floor(thyme_all(ti)), 'ConvertFrom', 'datenum') ...
+        + days(rem(thyme_all(ti),1)); % convert datenum to datetime object
+end
+time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
+time.TimeZone = 'America/Denver'; % shift to NREL time zone
+
+%From manual inspection, the entry we want to look at in the large dataset
+%is 3986
+
+aug_temp_ave_sonic = NaN(1, length(sonic_heights));
+aug_temp_std_sonic = NaN(1, length(sonic_heights));
+
+aug_temp_ave_solo = NaN(1, length(solo_heights));
+
+
+%Extract air temp from sonic anemometers
+for i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+    aug_temp_ave_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_mean')).val(3986);
+    aug_temp_std_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_sdev')).val(3986);
+end
+
+%Extract air temp from stand alone measurements
+for i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    aug_temp_ave_solo(i) = aug_data.all_data.(strcat('Air_Temperature_',num2str(solo_height),'m')).val(3986);
+end
+
+%Make plot
+figure(3)
+xlabel('Temperature (C)');
+ylabel('z (m)');
+title('Average temperature from August 2019 dataset')
+grid on
+hold on
+
+%Plot temperatures
+errorbar(aug_temp_ave_sonic, sonic_heights, aug_temp_std_sonic, 'horizontal', '*c', 'LineWidth',2)
+plot(aug_temp_ave_solo -273.15 , solo_heights, '*k', 'LineWidth',2)
+legend({'Sonic','Stand Alone Measurement'}, 'Location', 'southwest')
+
+hold off
+
+solo_heights = [3,38,87,122];
+%Extract virtual potential temp
+aug_vpt = NaN(1, length(solo_heights));
+for i = 1:length(solo_heights)
+    solo_height = solo_heights(i);
+    aug_vpt(i) = aug_data.all_data.(strcat('Virtual_Potential_Temperature_',num2str(solo_height),'m')).val(3986);
+end
+
+%Make plot
+figure(4)
+xlabel('Virtual Potential Temperature');
+ylabel('z (m)');
+xlim([43 46]);
+title('August 2019 dataset')
+grid on
+hold on
+
+plot(aug_vpt -273, solo_heights, '*r', 'LineWidth',2)
+hold off
+
+%% d short response
+%As can be seen from the temperature data, the virtual potential
+%temperature (VPT) is much higher than the raw temperature. The virtual potential
+%is also unreasonably high, even for the summer. This is likely because,
+%according to the report, a p0 of 100 kpa was used to calculate VPT.
+%However, the data was taken at an elevation of 6000 feet. According to
+%engineering toolbox, the pressure at 6000 feet is 81.2 kpa, much lower. If
+%this value was used, the temperature values would be lower and likely more
+%sensical. 
+
+%% Part e
+% We can correct the virtual potential temperature measurements by
+% multiplying them by the factor we get from changing p0 to 82 kpa. To find
+%This, we take (82/100)^(R/Cp), where R/Cp is given as 0.286. Thus,
+%multiplying by 0.94 should give us better temperature measurements. 
+
+figure(5)
+xlabel('Corrected Virtual Potential Temperature');
+ylabel('z (m)');
+xlim([24 27])
+title('August 2019 dataset')
+grid on
+hold on
+
+plot(aug_vpt.*0.94 -273, solo_heights, '*r', 'LineWidth',2)
+hold off
+
+%As can be seen, this gives us much more reasonable temperature values. The
+%slope here is negative, indicating a super-adiabatyic, or unstable,
+%bondary layer. This matches up with the conclusions from the temperature
+%data from part c. These values are also much closer to the values from
+%part c, but don't have the same two values that are much lower than the
+%rest, indicating that those two are in fact outliers. 
+
+
+
+##### SOURCE END #####
+-->
+</body>
+</html>

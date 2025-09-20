@@ -19,7 +19,7 @@ set(groot, 'defaultFigureColor', 'white');
 fileDir = 'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'; %Windows
 
 
-data = load(fullfile(fileDir, '08_28_2019_22_00_00_000.mat'));
+data = load(fullfile(fileDir, '08_28_2019_10_00_00_000.mat'));
 
 %% Time conversion
 %Convert UTC datenum to datetime
@@ -135,11 +135,11 @@ h2 = plot(nan, nan, '*k', 'LineWidth', 2);
 
 %Define and plot the adiabatic lapse rate
 h = linspace(0,120,1000);
-lapse_rate = (-9.8/1000).*h + 30;
+lapse_rate = (-9.8/1000).*h + 15;
 h3 = plot(lapse_rate, h);
 
 % Legend
-legend([h1 h2 h3], {'Sonic','Stand Alone Measurement', 'Adiabatic Lapse Rate'}, 'Location', 'southwest')
+legend([h1 h2 h3], {'Sonic','Stand Alone Measurement', 'Adiabatic Lapse Rate'}, 'Location', 'northwest')
 
 hold off
 %Based on these graphs, the temperature readings from the sonic anemometers
@@ -149,16 +149,15 @@ hold off
 %% Part b and c short answer 
 
 %In terms of stability, if we ignore the temperature readings at z = 41m
-%and 74m, we can see that the average slope is less steep (more negative)
+%and 74m, we can see that the average slope is more steep (more postive)
 %than the adiabatic lapse rate of -9.8 K/km. In other words, the lapse rate 
-%is super adiabatic.This indicates static instability. Given that these 
-%measurements were taken at 4pm local time, this observation makes sense. 
-%We would expect an unstable mixing layer at this time. However, there is a
-%decent degree of uncertainty. As mentioned previously, we have at least
-%two large outliers. Additionally, the temperature reading at z = 119 m
-%doesn't fall on the qualitatively observed slope. Finally, the slope
-%doesn't appear that much flatter than the adiabatic case, so small
-%variations in temperature could change the characterization. 
+%is sub adiabatic, or even an inversion as the slope is actually positive overall.
+%This indicates static stability. Given that these 
+%measurements were taken at 4am local time, this observation makes sense. 
+%We would expect an stable mixing layer at this time. However, there is a
+%small degree of uncertainty. As mentioned previously, we have at least
+%two large outliers. However, the slope is clearly negative when discarding
+%those two measurements, so I am confident in this characterization. 
 
 %% Part d: August 2019 
 %Load data
@@ -176,7 +175,7 @@ time.TimeZone = 'Etc/UTC'; % add TimeZone field (UTC time)
 time.TimeZone = 'America/Denver'; % shift to NREL time zone
 
 %From manual inspection, the entry we want to look at in the large dataset
-%is 3986
+%is 3913
 
 aug_temp_ave_sonic = NaN(1, length(sonic_heights));
 aug_temp_std_sonic = NaN(1, length(sonic_heights));
@@ -187,14 +186,14 @@ aug_temp_ave_solo = NaN(1, length(solo_heights));
 %Extract air temp from sonic anemometers
 for i = 1:length(sonic_heights)
     sonic_height = sonic_heights(i);
-    aug_temp_ave_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_mean')).val(3986);
-    aug_temp_std_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_sdev')).val(3986);
+    aug_temp_ave_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_mean')).val(3913);
+    aug_temp_std_sonic(i) = aug_data.all_data.(strcat('Raw_Sonic_Temp_',num2str(sonic_height),'_sdev')).val(3913);
 end
 
 %Extract air temp from stand alone measurements
 for i = 1:length(solo_heights)
     solo_height = solo_heights(i);
-    aug_temp_ave_solo(i) = aug_data.all_data.(strcat('Air_Temperature_',num2str(solo_height),'m')).val(3986);
+    aug_temp_ave_solo(i) = aug_data.all_data.(strcat('Air_Temperature_',num2str(solo_height),'m')).val(3913);
 end
 
 %Make plot
@@ -217,14 +216,14 @@ solo_heights = [3,38,87,122];
 aug_vpt = NaN(1, length(solo_heights));
 for i = 1:length(solo_heights)
     solo_height = solo_heights(i);
-    aug_vpt(i) = aug_data.all_data.(strcat('Virtual_Potential_Temperature_',num2str(solo_height),'m')).val(3986);
+    aug_vpt(i) = aug_data.all_data.(strcat('Virtual_Potential_Temperature_',num2str(solo_height),'m')).val(3913);
 end
 
 %Make plot
 figure(4)
 xlabel('Virtual Potential Temperature');
 ylabel('z (m)');
-xlim([43 46]);
+xlim([32 37]);
 title('August 2019 dataset')
 grid on
 hold on
@@ -234,8 +233,8 @@ hold off
 
 %% d short response
 %As can be seen from the temperature data, the virtual potential
-%temperature (VPT) is much higher than the raw temperature. The virtual potential
-%is also unreasonably high, even for the summer. This is likely because,
+%temperature (VPT) is once again much higher than the raw temperature
+%Again, his is likely because,
 %according to the report, a p0 of 100 kpa was used to calculate VPT.
 %However, the data was taken at an elevation of 6000 feet. According to
 %engineering toolbox, the pressure at 6000 feet is 81.2 kpa, much lower. If
@@ -243,7 +242,7 @@ hold off
 %sensical. 
 
 %% Part e
-% We can correct the virtual potential temperature measurements by
+% We can correct make our same correction to the virtual potential temperature measurements by
 % multiplying them by the factor we get from changing p0 to 82 kpa. To find
 %This, we take (82/100)^(R/Cp), where R/Cp is given as 0.286. Thus,
 %multiplying by 0.94 should give us better temperature measurements. 
@@ -251,7 +250,7 @@ hold off
 figure(5)
 xlabel('Corrected Virtual Potential Temperature');
 ylabel('z (m)');
-xlim([24 27])
+xlim([10 20])
 title('August 2019 dataset')
 grid on
 hold on
@@ -260,7 +259,7 @@ plot(aug_vpt.*0.94 -273, solo_heights, '*r', 'LineWidth',2)
 hold off
 
 %As can be seen, this gives us much more reasonable temperature values. The
-%slope here is negative, indicating a super-adiabatyic, or unstable,
+%slope here is positive, indicating a sub-adiabatic, or  highly stable,
 %bondary layer. This matches up with the conclusions from the temperature
 %data from part c. These values are also much closer to the values from
 %part c, but don't have the same two values that are much lower than the
