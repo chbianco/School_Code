@@ -14,9 +14,9 @@ set(groot, 'defaultFigureColor', 'white');
 
 %% Loading Data 
 %REMEMBER TO CHANGE THIS IF ON WINDOWS cause apples hates me 
-%fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1'; %Mac
+fileDir = '/Users/christopherbianco/Desktop/School_Code/Wind Physics/HW1'; %Mac
 
-fileDir = 'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'; %Windows
+%fileDir = 'C:\Users\Christopher\Desktop\School_Code\Wind Physics\HW1'; %Windows
 
 
 data = load(fullfile(fileDir, '08_28_2019_22_00_00_000.mat'));
