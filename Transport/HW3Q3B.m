@@ -12,21 +12,19 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Plotting
-r = linspace(0,1,100);
-lambdas = [0, 0.1, 1];
+x = linspace(0, 10, 1000);
 
-figure(1); hold on; %Initialize figure for plotting
+cplus = exp(-4.*exp(-x));
+cminus = exp(4.*exp(-x));
 
-for n = 1:3
-v = (r.^2)./4 - lambdas(n)/2 - 1/4;
+figure(1); hold on;
 
-%plot(r,-v, 'DisplayName', sprintf('Slip Length = %d', lambdas(n)));
-plot(r,-v, 'DisplayName', ['$\lambda$' '=' num2str(lambdas(n))]);
+plot(x, cplus);
+plot(x,cminus);
 
-
-end
-
-xlabel('$r^* = r/a$')
-ylabel('$u^*$')
-legend('Location', 'best')
+xlabel('$x/\xi$')
+ylabel('$C/C_0$')
+legend({'$K^+$', '$Cl^-$'}, 'Location', 'best')
 grid on 
+
+
