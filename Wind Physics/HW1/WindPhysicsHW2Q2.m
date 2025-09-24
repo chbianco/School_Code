@@ -39,7 +39,7 @@ plot(vpt_w, z)
 hold off
 
 %% Comparison 
-temp = (20-0.1).*z; 
+temp = (20-0.01).*z; 
 
 figure(3)
 hold on
