@@ -39,10 +39,16 @@ time.TimeZone = 'America/Denver'; % shift to NREL time zone
 sonic_heights = [15,41,61, 74, 100, 119];
 U_av_sonic = NaN(1, length(sonic_heights));
 U_std_sonic = NaN(1, length(sonic_heights));
+TKE_sonic = NaN(1, length(sonic_heights));
+TKE_std_sonic = NaN(1, length(sonic_heights));
+
 
 cup_heights = [3, 10, 30, 38, 55, 80, 87, 105, 122, 130];
 U_av_cup = NaN(1, length(cup_heights));
 U_std_cup = NaN(1, length(cup_heights)); 
+TKE_cup = NaN(1, length(cup_heights)); 
+TKE_std_cup = NaN(1, length(cup_heights)); 
+
 
 %Calculate horizontal wind speed from sonic anemometers
 for i = 1:length(sonic_heights)
@@ -51,6 +57,12 @@ for i = 1:length(sonic_heights)
     
     U_av_sonic(i) = mean(U);
     U_std_sonic(i) = std(U);
+
+    %TKE 
+    up = U - mean(U);
+    TKE_sonic(i) = mean(up.^2);
+    TKE_std_sonic(i) = std(up.^2);
+
 end
 
 %Extract horizontal wind speed from cup anemometers
@@ -68,18 +80,22 @@ for i = 1:length(cup_heights)
     %Do mean and standard deviation
     U_av_cup(i) = mean(U);
     U_std_cup(i) = std(U);
+
+    up = U - mean(U);
+    TKE_cup(i) = mean(up.^2);
+    TKE_std_cup(i) = std(up.^2);
 end
 
 %Make the figure
 figure(1); hold on; 
-xlabel('Horizontal Wind Speed (m/s)');
+xlabel('$TKE ~\overline{u^{\prime}u^{\prime}}, m^2/s^2$');
 ylabel('z (m)');
 grid on 
 
 %Plot sonic
-e1 = errorbar(U_av_sonic, sonic_heights, U_std_sonic, 'horizontal', '*c', 'LineWidth',2);
+e1 = errorbar(TKE_sonic, sonic_heights, TKE_std_sonic, 'horizontal', '*c', 'LineWidth',2);
 %Plot cup
-e2 = errorbar(U_av_cup, cup_heights, U_std_cup, 'horizontal', '*k', 'LineWidth',2);
+e2 = errorbar(TKE_cup, cup_heights, TKE_std_cup, 'horizontal', '*k', 'LineWidth',2);
 
 % Dummy plots for legend only
 h1 = plot(nan, nan, '*c', 'LineWidth', 2);
@@ -220,50 +236,6 @@ for i = 1:length(solo_heights)
     aug_vpt(i) = aug_data.all_data.(strcat('Virtual_Potential_Temperature_',num2str(solo_height),'m')).val(3986);
 end
 
-%Make plot
-figure(4)
-xlabel('Virtual Potential Temperature');
-ylabel('z (m)');
-xlim([43 46]);
-title('August 2019 dataset')
-grid on
-hold on
 
-plot(aug_vpt -273, solo_heights, '*r', 'LineWidth',2)
-hold off
-
-%% d short response
-%As can be seen from the temperature data, the virtual potential
-%temperature (VPT) is much higher than the raw temperature. The virtual potential
-%is also unreasonably high, even for the summer. This is likely because,
-%according to the report, a p0 of 100 kpa was used to calculate VPT.
-%However, the data was taken at an elevation of 6000 feet. According to
-%engineering toolbox, the pressure at 6000 feet is 81.2 kpa, much lower. If
-%this value was used, the temperature values would be lower and likely more
-%sensical. 
-
-%% Part e
-% We can correct the virtual potential temperature measurements by
-% multiplying them by the factor we get from changing p0 to 82 kpa. To find
-%This, we take (82/100)^(R/Cp), where R/Cp is given as 0.286. Thus,
-%multiplying by 0.94 should give us better temperature measurements. 
-
-figure(5)
-xlabel('Corrected Virtual Potential Temperature');
-ylabel('z (m)');
-xlim([24 27])
-title('August 2019 dataset')
-grid on
-hold on
-
-plot(aug_vpt.*0.94 -273, solo_heights, '*r', 'LineWidth',2)
-hold off
-
-%As can be seen, this gives us much more reasonable temperature values. The
-%slope here is negative, indicating a super-adiabatyic, or unstable,
-%bondary layer. This matches up with the conclusions from the temperature
-%data from part c. These values are also much closer to the values from
-%part c, but don't have the same two values that are much lower than the
-%rest, indicating that those two are in fact outliers. 
 
 
