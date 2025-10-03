@@ -171,3 +171,38 @@ e1 = errorbar(bf_av_sonic, sonic_heights, bf_std_sonic, 'horizontal', '*', 'Line
 % Dummy plots for legend only
 h1 = plot(nan, nan, '*c', 'LineWidth', 2);
 h2 = plot(nan, nan, '*k', 'LineWidth', 2);
+hold off
+
+
+%% Problem c
+%Initialize measurement height
+sonic_heights = [15,41,61, 74, 100, 119];
+shear_prod = NaN(1, length(sonic_heights));
+
+%Calculate horizontal wind speed from sonic anemometers
+for i = 1:length(sonic_heights)
+    sonic_height = sonic_heights(i);
+
+    %Mean horizontal flow
+    U = sqrt(data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val.^2 + data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val.^2);
+    
+    %Individual x and y velocities
+    u = data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val;
+    v = data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val;
+
+    %Fluctuations
+    up = u - mean(u);
+    vp = v - mean(v); 
+
+    %Shear production 
+    shear_prod(i) = mean(gradient(U))*mean(up.*vp); 
+end 
+
+figure(3); hold on;
+xlabel('Shear Production');
+ylabel('z (m)');
+grid on
+
+plot(shear_prod, sonic_heights, '*', 'LineWidth',2);
+
+hold off
