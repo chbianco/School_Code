@@ -173,6 +173,11 @@ h1 = plot(nan, nan, '*c', 'LineWidth', 2);
 h2 = plot(nan, nan, '*k', 'LineWidth', 2);
 hold off
 
+%% Problem b short answer
+%As can be seein from the plot, we have positive buoyancy flux at all
+%heights. This corresponds to unstable stratification, which makes sense
+%for 4pm local time. 
+
 
 %% Problem c
 %Initialize measurement height
@@ -204,3 +209,8 @@ grid on
 plot(shear_prod, sonic_heights, '*', 'LineWidth',2);
 
 hold off
+
+%% Problem c short answer
+%The magnitude of shear production is smaller than that of buoyancy
+%production. According to Stull, this puts the flow in the free convection
+%range. 
