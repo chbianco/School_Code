@@ -185,17 +185,15 @@ for i = 1:length(sonic_heights)
 
     %Mean horizontal flow
     U = sqrt(data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val.^2 + data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val.^2);
-    
-    %Individual x and y velocities
-    u = data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val;
-    v = data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val;
+    w = data.(strcat('Sonic_z_clean_',num2str(sonic_height),'m')).val;
+   
 
     %Fluctuations
-    up = u - mean(u);
-    vp = v - mean(v); 
+    Up = U - mean(U);
+    wp = w - mean(w); 
 
     %Shear production 
-    shear_prod(i) = mean(gradient(U))*mean(up.*vp); 
+    shear_prod(i) = mean(U)*mean(gradient(U_av_sonic))*mean(Up.*wp); 
 end 
 
 figure(3); hold on;
