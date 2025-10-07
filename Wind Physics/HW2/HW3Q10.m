@@ -44,10 +44,18 @@ for i = 1:length(sonic_heights)
     U_av_sonic(i) = mean(U);
     U_std_sonic(i) = std(U);
 
+    u = data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val;
+    v = data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val;
+    w = data.(strcat('Sonic_z_clean_',num2str(sonic_height),'m')).val;
+
+
     %TKE 
-    up = U - mean(U);
-    TKE_sonic(i) = mean(up.^2);
-    TKE_std_sonic(i) = std(up.^2);
+    up = u - mean(u);
+    vp = v - mean(v);
+    wp = w - mean(w);
+
+    TKE_sonic(i) = (1/2)*(mean(up.^2) + mean(vp.^2) + mean(wp.^2));
+    TKE_std_sonic(i) = std((1/2)*(up.^2 + vp.^2 + wp.^2));
 
 end
 
@@ -112,15 +120,6 @@ temp_std_sonic = NaN(1, length(sonic_heights));
 bf_av_sonic =  NaN(1, length(sonic_heights));
 bf_std_sonic =  NaN(1, length(sonic_heights));
 
-% I don't think we can get horizontal wind speed for the solo measurements
-% solo_heights = [3, 38, 87];
-% temp_av_solo = NaN(1, length(solo_heights));
-% temp_std_solo = NaN(1, length(solo_heights));
-% bf_av_solo = NaN(1, length(solo_heights));
-% bf_std_solo = NaN(1, length(solo_heights));
-% 
-% cup_heights = [3,38, 87];
-
 
 %Extract temp from sonic anemometers
 for i = 1:length(sonic_heights)
@@ -146,16 +145,6 @@ for i = 1:length(sonic_heights)
     bf_std_sonic(i) = std(bf);
 
 end
-
-% Again, don't think we can get 
-% %Extract temp from stand alone measurements
-% for i = 1:length(solo_heights)
-%     solo_height = solo_heights(i);
-%     temp = data.(strcat('Air_Temp_', num2str(solo_height), 'm')).val;
-% 
-%     temp_av_solo(i) = mean(temp);
-%     temp_std_solo(i) = std(temp);
-% end
 
 %Make figure
 figure(2); hold on;
@@ -197,8 +186,18 @@ for i = 1:length(sonic_heights)
     Up = U - mean(U);
     wp = w - mean(w); 
 
+    %dU/dz using finite differences
+    
+    if i == 1
+        dU = (U_av_sonic(i+1) + U_av_sonic(i))/(sonic_heights(i+1)-sonic_heights(i));
+    elseif i == 6
+        dU = (U_av_sonic(i) + U_av_sonic(i-1))/(sonic_heights(i)-sonic_heights(i-1));
+    else
+        dU = (U_av_sonic(i+1) + U_av_sonic(i-1))/(sonic_heights(i+1)-sonic_heights(i-1));
+    end
+
     %Shear production 
-    shear_prod(i) = mean(U)*mean(gradient(U_av_sonic))*mean(Up.*wp); 
+    shear_prod(i) = dU*mean(Up.*wp); 
 end 
 
 figure(3); hold on;

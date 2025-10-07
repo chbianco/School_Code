@@ -44,10 +44,18 @@ for i = 1:length(sonic_heights)
     U_av_sonic(i) = mean(U);
     U_std_sonic(i) = std(U);
 
+    u = data.(strcat('Sonic_x_clean_',num2str(sonic_height),'m')).val;
+    v = data.(strcat('Sonic_y_clean_',num2str(sonic_height),'m')).val;
+    w = data.(strcat('Sonic_z_clean_',num2str(sonic_height),'m')).val;
+
+
     %TKE 
-    up = U - mean(U);
-    TKE_sonic(i) = mean(up.^2);
-    TKE_std_sonic(i) = std(up.^2);
+    up = u - mean(u);
+    vp = v - mean(v);
+    wp = w - mean(w);
+
+    TKE_sonic(i) = (1/2)*(mean(up.^2) + mean(vp.^2) + mean(wp.^2));
+    TKE_std_sonic(i) = std((1/2)*(up.^2 + vp.^2 + wp.^2));
 
 end
 
@@ -91,7 +99,6 @@ h2 = plot(nan, nan, '*k', 'LineWidth', 2);
 legend([h1 h2], {'Sonic','Cup'}, 'Location', 'best')
 
 hold off
-
 %% Part a short answer:
 %The general trend of TKE follows figure 5.1 in Stull (staying close to
 %zero and barely increasing with height). We do see very high standard
@@ -179,6 +186,7 @@ hold off
 
 
 %% Problem c
+%% Problem c
 %Initialize measurement height
 sonic_heights = [15,41,61, 74, 100, 119];
 shear_prod = NaN(1, length(sonic_heights));
@@ -196,8 +204,18 @@ for i = 1:length(sonic_heights)
     Up = U - mean(U);
     wp = w - mean(w); 
 
+    %dU/dz using finite differences
+    
+    if i == 1
+        dU = (U_av_sonic(i+1) + U_av_sonic(i))/(sonic_heights(i+1)-sonic_heights(i));
+    elseif i == 6
+        dU = (U_av_sonic(i) + U_av_sonic(i-1))/(sonic_heights(i)-sonic_heights(i-1));
+    else
+        dU = (U_av_sonic(i+1) + U_av_sonic(i-1))/(sonic_heights(i+1)-sonic_heights(i-1));
+    end
+
     %Shear production 
-    shear_prod(i) = mean(U)*mean(gradient(U_av_sonic))*mean(Up.*wp); 
+    shear_prod(i) = dU*mean(Up.*wp); 
 end 
 
 figure(3); hold on;
@@ -210,6 +228,6 @@ plot(shear_prod, sonic_heights, '*', 'LineWidth',2);
 hold off
 
 %% Problem c short answer
-%The magnitude of shear production is larger than that of buoyancy
-%production. According to Stull, this puts the flow in the forced convection
-%range. 
+%The magnitude of bouyant production is larger than that of shear
+%production, and the buoyant production is slightly negative. 
+%According to Stull, this puts the flow in the stably stratified range. 
