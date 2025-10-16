@@ -1,4 +1,4 @@
-%% Preamble
+%% PREAMBLE
 close all;
 clear variables;
 clc;
@@ -12,23 +12,19 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Plotting
-r = linspace(0,1,100);
-lambdas = [0, 0.1, 1];
+x = linspace(0, 1, 1000);
 
-figure(1); hold on; %Initialize figure for plotting
+c1 = (exp(1) - exp(1.*x))./(exp(1) -1);
+c2 = (exp(30) - exp(30.*x))./(exp(30) -1);
 
-for n = 1:3
-v = (r.^2)./4 - lambdas(n)/2 - 1/4;
+figure(1); hold on;
 
-%plot(r,-v, 'DisplayName', sprintf('Slip Length = %d', lambdas(n)));
-plot(r,-v, 'DisplayName', ['$\lambda$' '=' num2str(lambdas(n))]);
+plot(x, c1);
+plot(x, c2);
 
-
-end
-
-xlabel('$r^* = r/a$')
-ylabel('$u^*$')
-legend('Location', 'best')
+xlabel('$x\L$')
+ylabel('$C/C_0$')
 grid on 
+legend({'P=1', 'P=30'})
 hold off
 
