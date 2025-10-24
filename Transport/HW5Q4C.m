@@ -16,7 +16,7 @@ x = linspace(0, 1, 1000);
 
 cin = 1-exp(-50.*x);
 cout = 1./(0.2.*(1-x)+1);
-ccomp = 1./(0.2.*(1-x)+1) -exp(-50.*x);
+ccomp = 1./(0.2.*(1-x)+1) -exp(-50.*x)/(1.2);
 
 figure(1); hold on;
 
