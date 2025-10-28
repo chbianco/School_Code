@@ -24,12 +24,13 @@ plot(x, T_est);
 grid on
 xlabel('$\tilde{x}$')
 ylabel('$\tilde{T}$')
+title('Expansion Solution')
 legend({'Exact Solution', 'Expansion Solution'}, 'Location','best')
 hold off
 
 %% Exact vs Boundary
 
-T_bound = exp(-0.6.*(1-x));
+T_bound = exp(-3.*(1-x));
 
 figure(2); hold on;
 plot(x, T);
@@ -37,5 +38,7 @@ plot(x, T_bound);
 grid on
 xlabel('$\tilde{x}$')
 ylabel('$\tilde{T}$')
+title('Boundary Solution')
+
 legend({'Exact Solution', 'Inner Solution'}, 'Location','best')
 hold off
