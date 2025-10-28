@@ -14,7 +14,7 @@ set(groot, 'defaultLineLineWidth', 2);
 %% Solving the ODE
 %Exact
 eps = 0.1;
-Km = 0.1;
+Km = 1;
 gam = 0.5;
 
 t_span = [0, 0.3];
@@ -56,6 +56,7 @@ plot(t_a, c_a);
 grid on
 xlabel('$\tilde{t}$')
 ylabel('Non-Dim Concentration')
+ylim([0 1]);
 legend({'s', 'c'}, 'Location','best')
 title('Approximate Solution (3.4)')
 hold off
