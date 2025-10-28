@@ -31,6 +31,8 @@ hold off
 %% Exact vs Boundary
 
 T_bound = exp(-3.*(1-x));
+T = besseli(1, 2*3.*sqrt(x))./(besseli(1, 2*3));
+
 
 figure(2); hold on;
 plot(x, T);
