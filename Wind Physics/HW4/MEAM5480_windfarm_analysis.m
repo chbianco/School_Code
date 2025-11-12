@@ -36,6 +36,8 @@ rot = table2array(data(:,4:5:end)); % rotor speed (RPM)
 power = table2array(data(:,5:5:end)); % power (kW)
 yaw = table2array(data(:,6:5:end)); % yaw angle (deg)
 
+%% Part a short answer
+
 %% Compute power curves
 
 % Example plotting code for the above variables
@@ -46,8 +48,8 @@ ylabel('Wind Direction (\circ)');
 legend(names, 'location', 'eastoutside');
 grid on;
 
-Cp = power /(0.5*rho*pi*77^2*mean(wind_speed)^3); % ***
-TSR = rot * 77/mean(wind_speed); %***
+Cp = power ./(0.5*rho*pi*(77^2).*wind_speed.^3); % ***
+TSR = rot .* 77./wind_speed; %***
 Cp(Cp<0) = NaN;
 figure;
 plot(TSR, Cp, '.');
@@ -57,6 +59,12 @@ ylabel('Coefficient of Power, C_p');
 legend(names, 'location', 'eastoutside');
 grid on;
 
+%% Part b short answer
+% See plot above. There is so much scatter at high tip speed ratios because
+% that's when we start to enter the cut out wind speeds, so the turbines
+% have to be controlled to reduce their power. This can be done in a
+% variety of ways, and means the power doesn't follow the typical curve
+% because the turbine is being made to perform unoptimally. 
 %% Plot wind vectors and wind-farm power generation
 scaleArrowXY = [5; 1.5]; % lat/lon location for scale arrow
 arrowScale = 10; % m/s per km of arrow length on plot 
@@ -101,21 +109,59 @@ xlabel('x (km)');
 ylabel('y (km)');
 title(string(time(tInd_plot)));
 
+%% Part c short answer
+%Based on the video, wind speeds are the highest in the very early morning
+%(ie 3am). THis is due to low level jets that occur during this time. These
+%jets can have flow speeds grater than the geostrophic winds due to the
+%stably stratified nature of the ABL at night. 
 %% Study yaw misalignment
-yaw_misalign = yaw * 0; % ***
+yaw_misalign = rad2deg(angdiff(deg2rad(yaw), deg2rad(wind_dir))) ; % ***
 % ^ note that angdiff handles logic of subtracting angles on a circle
 fprintf('Average magnitude of yaw misalignment: %.2f degrees.\n', ...
     mean(abs(yaw_misalign(:)), 'omitnan'));
 
 % Make various plots here to see what affects yaw misalignment ***
+figure;
+plot(wind_speed, yaw_misalign, '.');
+xlabel('Wind Speed (m/s)');
+ylabel('Yaw Misalginment (Degrees)');
+legend(names, 'location', 'eastoutside');
+grid on;
 
+figure;
+plot(Cp, yaw_misalign, '.');
+xlabel('C_p');
+ylabel('Yaw Misalginment (Degrees)');
+legend(names, 'location', 'eastoutside');
+grid on;
+
+figure;
+plot(TSR, yaw_misalign, '.');
+xlabel('TSR');
+ylabel('Yaw Misalginment (Degrees)');
+legend(names, 'location', 'eastoutside');
+grid on; 
+
+figure;
+plot(wind_dir, yaw_misalign, '.');
+xlabel('Wind Direction (Degrees)');
+ylabel('Yaw Misalginment (Degrees)');
+legend(names, 'location', 'eastoutside');
+grid on; 
 
 %% Study wake losses
 
+figure;
+plot(wind_dir, Cp, '.');
+xlabel('Wind Direction (Degrees)');
+ylabel('Cp');
+legend(names, 'location', 'eastoutside');
+grid on;
+
 % Input parameters ***
-wind_dir_worstcase = 0; % deg ***
-worstcase_plusminus = 0; % deg (plus/minus about worst-case direction) ***
-WTG_select = 1 : 15; % array of indices, in order from upwind to downwind ***
+wind_dir_worstcase = 300; % deg ***
+worstcase_plusminus = 5; % deg (plus/minus about worst-case direction) ***
+WTG_select = 1:15; % array of indices, in order from upwind to downwind ***
 
 % Conditional sampling (CS) and averaging for worst-case wind direction(s)
 mean_wind_dir = mean(wind_dir, 2, 'omitnan');
