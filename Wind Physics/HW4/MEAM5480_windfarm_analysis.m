@@ -36,7 +36,6 @@ rot = table2array(data(:,4:5:end)); % rotor speed (RPM)
 power = table2array(data(:,5:5:end)); % power (kW)
 yaw = table2array(data(:,6:5:end)); % yaw angle (deg)
 
-%% Part a short answer
 
 %% Compute power curves
 
@@ -45,6 +44,13 @@ figure;
 plot(wind_speed, wind_dir, '.');
 xlabel('Wind Speed (m/s)');
 ylabel('Wind Direction (\circ)');
+legend(names, 'location', 'eastoutside');
+grid on;
+
+figure;
+plot(wind_speed, power, '.');
+xlabel('Wind Speed (m/s)');
+ylabel('Power');
 legend(names, 'location', 'eastoutside');
 grid on;
 
@@ -59,6 +65,10 @@ ylabel('Coefficient of Power, C_p');
 legend(names, 'location', 'eastoutside');
 grid on;
 
+%% Part a short answer 
+%From the second plot above, we can see that the cut in wind speed is
+%around 4 m/. The rated power is 7000 kW, the rated wind speed is around 15
+%m/s, and the cut out wind speed starts around 22 m/s. 
 %% Part b short answer
 % See plot above. There is so much scatter at high tip speed ratios because
 % that's when we start to enter the cut out wind speeds, so the turbines
@@ -152,14 +162,14 @@ grid on;
 %% Study wake losses
 
 figure;
-plot(wind_dir, Cp, '.');
+plot(wind_dir, power, '.');
 xlabel('Wind Direction (Degrees)');
-ylabel('Cp');
+ylabel('Power (kW)');
 legend(names, 'location', 'eastoutside');
 grid on;
 
 % Input parameters ***
-wind_dir_worstcase = 300; % deg ***
+wind_dir_worstcase = 350; % deg ***
 worstcase_plusminus = 5; % deg (plus/minus about worst-case direction) ***
 WTG_select = 2:15; % array of indices, in order from upwind to downwind ***
 
