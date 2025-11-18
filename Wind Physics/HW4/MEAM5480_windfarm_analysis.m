@@ -161,7 +161,7 @@ grid on;
 % Input parameters ***
 wind_dir_worstcase = 300; % deg ***
 worstcase_plusminus = 5; % deg (plus/minus about worst-case direction) ***
-WTG_select = 1:15; % array of indices, in order from upwind to downwind ***
+WTG_select = 2:15; % array of indices, in order from upwind to downwind ***
 
 % Conditional sampling (CS) and averaging for worst-case wind direction(s)
 mean_wind_dir = mean(wind_dir, 2, 'omitnan');
