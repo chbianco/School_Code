@@ -159,6 +159,14 @@ ylabel('Yaw Misalginment (Degrees)');
 legend(names, 'location', 'eastoutside');
 grid on; 
 
+%% Part d short answer
+%Yaw misalignment seems to be the worst at low wind speeds. This is likely
+%because the anemometers on the wind turbinbes have lots of noise that
+%these low wind speeds and thus the controller has a harder time
+%distingushing the mean wind direction from small, low speed fluctuations.
+%See figure 5 above, which shows large nonzero yaw misalginnment at low
+%wind speeds that converges after roughly 7 m/s. 
+
 %% Study wake losses
 
 figure;
@@ -168,10 +176,34 @@ ylabel('Power (kW)');
 legend(names, 'location', 'eastoutside');
 grid on;
 
+binWidth = 5; % degrees for binning wind direction
+total_power_time = nansum(power, 2); %kW per time step 
+total_power = mean(total_power_time); % kW
+
+edges = 0:binWidth:360; %Make bins
+centers = edges(1:end-1) + binWidth/2; %Make bins
+mean_power_per_bin = nan(size(centers));
+count_per_bin = zeros(size(centers));
+
+for b = 1:length(centers)
+    % find times where wind direction (mean_wind_dir) falls within the bin
+    d = wrapTo180(mean_wind_dir - centers(b));  % circular difference in degrees
+    inBin = abs(d) <= binWidth/2;
+    mean_power_per_bin(b) = mean(total_power_time(inBin), 'omitnan');
+    count_per_bin(b) = sum(inBin);
+end
+
+% 3) Find worst-case direction (bin center with smallest mean total power, require some samples)
+validBins = count_per_bin >= 5; % require at least 5 samples in bin to be credible
+[~, idx_min] = min(mean_power_per_bin(validBins));
+validCenters = centers(validBins);
+phi_wc = validCenters(idx_min);
+fprintf('Identified worst-case farm wind direction phi_wc = %.1f deg (bin width %.1f deg).\n', phi_wc, binWidth);
+%% Conditional average 
 % Input parameters ***
-wind_dir_worstcase = 350; % deg ***
+wind_dir_worstcase = 307.5; % deg ***
 worstcase_plusminus = 5; % deg (plus/minus about worst-case direction) ***
-WTG_select = 2:15; % array of indices, in order from upwind to downwind ***
+WTG_select = [2,3,4]; % array of indices, in order from upwind to downwind ***
 
 % Conditional sampling (CS) and averaging for worst-case wind direction(s)
 mean_wind_dir = mean(wind_dir, 2, 'omitnan');
@@ -201,6 +233,17 @@ xlabel('Turbine Number in Row');
 ylabel('Average Normalized Power (P_{i} / P_1)');
 grid on;
 
+%% Part e short answer
+% The worst case wind direction is 307.5 +/- 5 degrees. Note that this
+% makes intuitive sense, as this is when the wind lines up with the turbine
+% rows. 
+% The total power produced in the time is around 70 MW. As can be seen from
+% the conditional averaging, the wake losses are significant. In the row
+%formed by turbines 2, 3, and 4, for this wind direction, turbine 3 is
+%operating at roughly 80% of 2, and 4 is at about 90%. This corresponds to
+%losses on the order of megawatts, which is a lot of power. For reference,
+%1 MW can power a home for about a month. Thus, these wake losses are very
+%significant.
 %% Make video over all frames -- uncomment by removing %{ ... %}
 %{
 vidSpeedFactor = 2; % number of hours per second of video time
