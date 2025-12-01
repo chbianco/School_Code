@@ -179,6 +179,8 @@ grid on;
 binWidth = 5; % degrees for binning wind direction
 total_power_time = nansum(power, 2); %kW per time step 
 total_power = mean(total_power_time); % kW
+mean_wind_dir = mean(wind_dir, 2, 'omitnan');
+
 
 edges = 0:binWidth:360; %Make bins
 centers = edges(1:end-1) + binWidth/2; %Make bins
