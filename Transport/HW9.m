@@ -96,34 +96,67 @@ j_max = 1000;
 ts = linspace(0, 6, 1000);
 xs = linspace(0, 1, 1000);
 
-c0 = zeros(1, length(xs));
-c01 = zeros(1, length(xs));
-c03 = zeros(1, length(xs));
-c07 = zeros(1, length(xs));
-c3 = zeros(1, length(xs));
-
-for j = 1:j_max
-c0_j = sqrt(2).*cos((j + 1/2).*pi.*xs).*(sqrt(2)/2)*(j*pi + pi/2)*sin(j*pi + pi/2).*exp((-j^2).*(pi^2).*0).*(exp(-0).*(0.*exp(0) + 1) -1);
-c01_j = sqrt(2).*cos((j + 1/2).*pi.*xs).*(sqrt(2)/2)*(j*pi + pi/2)*sin(j*pi + pi/2).*exp((-j^2).*(pi^2).*0.1).*(exp(-0.1).*(0.1.*exp(0.1) + 1) -1);
-c03_j = sqrt(2).*cos((j + 1/2).*pi.*xs).*(sqrt(2)/2)*(j*pi + pi/2)*sin(j*pi + pi/2).*exp((-j^2).*(pi^2).*0.3).*(exp(-0.3).*(0.3.*exp(0.3) + 1) -1);
-c07_j = sqrt(2).*cos((j + 1/2).*pi.*xs).*(sqrt(2)/2)*(j*pi + pi/2)*sin(j*pi + pi/2).*exp((-j^2).*(pi^2).*0.7).*(exp(-0.7).*(0.7.*exp(0.7) + 1) -1);
-c3_j = sqrt(2).*cos((j + 1/2).*pi.*xs).*(sqrt(2)/2)*(j*pi + pi/2)*sin(j*pi + pi/2).*exp((-j^2).*(pi^2).*3).*(exp(-3).*(3.*exp(3) + 1) -1);
-
-c0 = c0 + c0_j;
-c01 = c01 + c01_j;
-c03 = c03 + c03_j;
-c07 = c07 + c07_j;
-c3 = c3 + c3_j;
-end
+t_vec = [0, 0.1, 0.3, 0.7, 3];
 
 figure(5); hold on;
-plot(xs, 1 + c0);
-plot(xs, 1 + c01);
-plot(xs, 1 + c03);
-plot(xs, 1 + c07);
-plot(xs, 1 + c3);
 xlabel('$x$')
 ylabel('Sheet Concentration')
-legend({'t = 0', 't = 0.1', 't = 0.3', 't = 0.7', 't = 3'})
 grid on 
+
+for n = 1:length(t_vec)
+C = zeros(1, length(ts));
+t = t_vec(n);
+
+for j = 1:j_max
+    Cj = sqrt(2).*cos((j + 0.5).*xs.*pi).*...
+        exp(-(pi^2)*((j+0.5)^2)*t) * ((2/(2*pi*j + pi))*2*sin(j*pi + pi/2) + ...
+       sqrt(2)*(j*pi+pi/2)*sin(j*pi + pi/2)*(2 * exp(-t)...
+       * (((4 * (pi^2) * (j^2) + 4 * (pi^2) * j + (pi^2) - 4) * exp(t) -...
+       4 * (pi^2) * (j^2) - 4 * (pi^2) * j - (pi^2)) * exp((pi^2) * (j^2) *...
+       t + (pi^2) * j * t + ((pi^2) * t) / 4) + 4 * exp(t))) /...
+       (pi^2 * (16 * (pi^2) * j^4 + 32 * (pi^2) * (j^3) + (24 * (pi^2) - 16) *...
+       (j^2) + (8 * pi^2 - 16) * j + (pi^2) - 4)));
+
+    C = C + Cj;
+end
+
+plot(xs, C, 'DisplayName', ['$t$' '=' num2str(t_vec(n))])
+end
+legend
 hold off
+%% LEss bad 
+f = 1/2 - 0.5*exp(-ts);
+figure(6); hold on;
+xlabel('$t$')
+ylabel('f(t)')
+grid on 
+plot(f, ts);
+hold off;
+% 
+% figure(7)
+% xlabel('$t$')
+% ylabel('C(0,t)')
+% grid on 
+
+%% 5 B
+Ra = linspace(0,16,1000);
+
+U1 = sqrt(Ra -1);
+U2 = -sqrt(Ra -1);
+y1 = sqrt(Ra -1)./Ra;
+y2 = -sqrt(Ra -1)./Ra;
+x1 = 1./Ra;
+x2 = -1./Ra;
+
+figure(7); hold on;
+plot(Ra, U1)
+plot(Ra, U2)
+plot(Ra, y1)
+plot(Ra, y2)
+plot(Ra, x1)
+plot(Ra, x2)
+ylim([-1 1])
+legend({'U1', 'U2', 'y1', 'y2', 'x1', 'x2'})
+
+
+hold off;
