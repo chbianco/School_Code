@@ -93,7 +93,6 @@ hold off
 
 %% 3B
 j_max = 1000;
-ts = linspace(0, 6, 1000);
 xs = linspace(0, 1, 1000);
 
 t_vec = [0, 0.1, 0.3, 0.7, 3];
@@ -104,18 +103,15 @@ ylabel('Sheet Concentration')
 grid on 
 
 for n = 1:length(t_vec)
-C = zeros(1, length(ts));
+C = zeros(1, length(xs));
 t = t_vec(n);
 
 for j = 1:j_max
-    Cj = sqrt(2).*cos((j + 0.5).*xs.*pi).*...
-        exp(-(pi^2)*((j+0.5)^2)*t) * ((2/(2*pi*j + pi))*2*sin(j*pi + pi/2) + ...
-       sqrt(2)*(j*pi+pi/2)*sin(j*pi + pi/2)*(2 * exp(-t)...
-       * (((4 * (pi^2) * (j^2) + 4 * (pi^2) * j + (pi^2) - 4) * exp(t) -...
-       4 * (pi^2) * (j^2) - 4 * (pi^2) * j - (pi^2)) * exp((pi^2) * (j^2) *...
-       t + (pi^2) * j * t + ((pi^2) * t) / 4) + 4 * exp(t))) /...
-       (pi^2 * (16 * (pi^2) * j^4 + 32 * (pi^2) * (j^3) + (24 * (pi^2) - 16) *...
-       (j^2) + (8 * pi^2 - 16) * j + (pi^2) - 4)));
+
+    lambda_k = (2*j -1)*pi/2;
+    Cj = (-1)^(j+1) * cos(((-1+2*j)*pi.*xs)./2) .* ...
+         ((lambda_k/(lambda_k^2 - 1))*(exp(-t) - 1 + 1/lambda_k^2 - (1/lambda_k^2)*...
+         exp(-(lambda_k^2)*t)) + (2/lambda_k)*exp(-lambda_k^2*t));
 
     C = C + Cj;
 end
@@ -124,14 +120,33 @@ plot(xs, C, 'DisplayName', ['$t$' '=' num2str(t_vec(n))])
 end
 legend
 hold off
-%% LEss bad 
-f = 1/2 - 0.5*exp(-ts);
+%% Less bad 
+
+ts = linspace(0, 6, 1000);
+f = 0.5 - 0.5.*exp(-ts);
+p_max = 1000;
+
+C_t = zeros(1, length(ts));
+
+for p = 1:p_max
+
+    lambda_k = (2*p -1)*pi/2;
+    Cp = (-1)^(p+1) .* ...
+         ((lambda_k/(lambda_k^2 - 1)).*(exp(-ts) - 1 + 1/lambda_k^2 - (1/lambda_k^2).*exp(-lambda_k^2*ts)) ...
+         + (2/lambda_k).*exp(-lambda_k^2.*ts));
+
+    C_t = C_t + Cp;
+end
+
+
 figure(6); hold on;
 xlabel('$t$')
-ylabel('f(t)')
 grid on 
-plot(f, ts);
+plot(ts, f);
+plot(ts, C_t)
+legend({'f(t)', 'c(0,t)'})
 hold off;
+
 % 
 % figure(7)
 % xlabel('$t$')
