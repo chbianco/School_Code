@@ -38,8 +38,8 @@ end
 lgd = legend(ax, 'Location', 'best');
 
 % -------- FONT SIZE CONTROL --------
-axisLabelFontSize = 36;   % <-- change as desired
-legendFontSize    = 28;   % <-- change as desired
+axisLabelFontSize = 54;   % <-- change as desired
+legendFontSize    = 24;   % <-- change as desired
 
 % Axis labels
 ax.XLabel.FontSize = axisLabelFontSize;
