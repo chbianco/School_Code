@@ -99,8 +99,8 @@ for n = 1:4
     A_to(1,2) = 1;
     % --- RIGHT boundary row (j = N)
     A_to(end,:) = 0;
-    A_to(end,end)   = 2;
-    A_to(end,end-1) = 1;
+    A_to(end,end) = 1;
+    A_to(end,end-1) = 2;
     %Periodic A
     A_pe = diag(4*e) + diag(e(1:end-1),1) + diag(e(1:end-1),-1);
     A_pe(1,end) = 1;
@@ -132,14 +132,14 @@ h_ref = hs(end);
 % Reference errors
 C1 = e_fo_fd(end)    / h_ref^1;  % 1st order
 C2 = e_so_fd(end)    / h_ref^2;  % 2nd order
-C3 = e_fo_pa_to(end) / h_ref^1.75;  % 3rd order, pade third order
+C3 = e_fo_pa_to(end) / h_ref^3;  % 3rd order, pade third order
 C4 = e_fo_cd(end)    / h_ref^4;  % 4th order, central difference
 C5 = e_fo_pa_pe(end)    / h_ref^4;  % 4th order, pade periodic 
 
 % Asymptote lines
 loglog(hs, C1*hs.^1, '--b')
 loglog(hs, C2*hs.^2, '--r')
-loglog(hs, C3*hs.^1.75, '--k')
+loglog(hs, C3*hs.^3, '--k')
 loglog(hs, C4*hs.^4, '--c')
 loglog(hs, C5*hs.^4, '--k' )
 
