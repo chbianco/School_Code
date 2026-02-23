@@ -54,14 +54,14 @@ figure(1); clf; hold on; grid on
 xlabel('$x$')
 ylabel('$f^\prime$')
 title('Part a scheme')
-plot(x, cd)
-plot(x, exact)
+plot(x, cd, 'r')
+plot(x, exact, '--b')
 legend({'Central Difference', 'Exact'}, 'Location','best')
 
 figure(2); clf; hold on; grid on
 xlabel('$x$')
 ylabel('$f^\prime$')
 title('Part b scheme')
-plot(xb, cd_b)
-plot(x, exact)
+plot(xb, cd_b, 'r')
+plot(x, exact, '--b')
 legend({'Central Difference', 'Exact'}, 'Location','best')
