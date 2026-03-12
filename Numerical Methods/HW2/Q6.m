@@ -48,7 +48,7 @@ function [t, U] = rk4_solve(f, t0, tf, u0, h)
 end
 
 f = @(u) rhs(u, lam, om, b0, xi, eta);
-u0 = [0; 0; pi/12; pi];
+u0 = [pi/12; pi; 0; 0];
 [t, U] = rk4_solve(f, 0, 100, u0, 0.005);
 
 %% Plot 
