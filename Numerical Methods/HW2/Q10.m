@@ -9,7 +9,7 @@ set(groot, 'defaultAxesTickLabelInterpreter','latex');
 set(groot, 'defaultLegendInterpreter','latex');
 set(groot, 'defaultTextFontSize', 12);
 set(groot, 'defaultAxesFontSize', 16);
-set(groot, 'defaultLineLineWidth', 1);
+set(groot, 'defaultLineLineWidth', 2);
 
 %% Setup
 % RHS

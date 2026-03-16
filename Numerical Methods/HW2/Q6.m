@@ -48,7 +48,7 @@ function [t, U] = rk4_solve(f, t0, tf, u0, h)
 end
 
 f = @(u) rhs(u, lam, om, b0, xi, eta);
-u0 = [pi/12; pi; 0; 0];
+u0 = [0; 0; pi/12; pi;];
 [t, U] = rk4_solve(f, 0, 100, u0, 0.005);
 
 %% Plot 
@@ -64,6 +64,8 @@ plot(t, U(:,2), 'b'); hold on;
 plot(t, U(:,4), 'r');
 xlabel('t (s)'); ylabel('Angular velocity (rad/s)');
 legend('$\dot\alpha$', '$\dot\gamma$'); grid on;
+
+sgtitle('$\alpha = 0, \dot{\alpha} = 0,  \gamma =\pi/12, \dot{\gamma} = \pi$')
 
 
 %% Chaotic ICs

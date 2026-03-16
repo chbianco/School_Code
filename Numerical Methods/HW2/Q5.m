@@ -51,12 +51,12 @@ subplot(1,2,1);
 plot(tspan, y_ex,  'k-',  'LineWidth', 2, 'DisplayName', 'Exact'); hold on;
 plot(tspan, y_fi,  'b--', 'LineWidth', 1.5, 'DisplayName', 'Fully Implicit');
 plot(tspan, y_li,  'r:',  'LineWidth', 1.5, 'DisplayName', 'Linearized Implicit');
-xlabel('t'); ylabel('y'); title('$y_0 = -10^{-5}$');
+xlabel('t'); ylabel('y'); title('$y_0 = -1$');
 legend('Location','best'); grid on;
 
 subplot(1,2,2);
 semilogy(tspan, abs(y_fi - y_ex), 'b--', 'LineWidth', 1.5, 'DisplayName', 'Fully Implicit'); hold on;
 semilogy(tspan, abs(y_li - y_ex), 'r:',  'LineWidth', 1.5, 'DisplayName', 'Linearized');
-xlabel('t'); ylabel('$|error|$'); title('Errors, $y_0 = -10^{-5}$');
+xlabel('t'); ylabel('$|error|$'); title('Errors, $y_0 = -1$');
 legend('Location','best'); grid on;
 sgtitle('Problem 4.12(c)');

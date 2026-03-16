@@ -12,7 +12,7 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Solving
-h = 0.2;
+h = 1.2;
 t = 0:h:15;
 v = zeros(1, length(t));
 
@@ -53,10 +53,12 @@ end
 
 %% Plotting
 figure(1); hold on; grid on;
+ylim([-1 5])
 plot(t, exact)
 plot(t, v_fe)
 plot(t, v_be)
 plot(t, v_trp)
 plot(t, v_rk2)
 plot(t, v_rk4)
+title('h = 1.2')
 legend({'Exact Solution', 'Explicit Euler', 'Backward Euler', 'Trapezoidal', 'RK2', 'RK4'})
