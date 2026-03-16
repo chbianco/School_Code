@@ -90,7 +90,7 @@ cfg.wandLength      = 0.100;        % distance between the two LED tips [m]
 % -------------------------------------------------------------------------
 % 5.  DATA PATHS
 % -------------------------------------------------------------------------
-cfg.airCalibDir     = 'data/air_calib';      % folder of checkerboard images per camera
+cfg.airCalibDir     = 'data/air_calibration';      % folder of checkerboard images per camera
                                               % sub-folders: cam1/ cam2/ cam3/ cam4/
 cfg.wandImageDir    = 'data/wand_images';    % synchronised wand image sets
                                               % sub-folders: cam1/ cam2/ cam3/ cam4/
@@ -99,8 +99,8 @@ cfg.resultsDir      = 'results';             % all outputs written here
 % -------------------------------------------------------------------------
 % 6.  CHECKERBOARD (Phase 1)
 % -------------------------------------------------------------------------
-cfg.cbSquareSize    = 0.025;        % physical size of one square [m]
-cfg.cbBoardSize     = [9 6];        % inner corners [cols rows]
+cfg.cbSquareSize    = 0.0192;        % physical size of one square [m]
+cfg.cbBoardSize     = [9 12];        % inner corners [cols rows]
 
 % -------------------------------------------------------------------------
 % 7.  LED DETECTION (Phase 2)
