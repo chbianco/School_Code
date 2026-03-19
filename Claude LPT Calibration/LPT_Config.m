@@ -26,7 +26,7 @@ cfg.imageSize       = [1280 1024];  % [width height] pixels  — adjust to your 
 % 2.  REFRACTIVE INDICES
 % -------------------------------------------------------------------------
 cfg.n_air           = 1.000;        % air
-cfg.n_glass         = 1.520;        % borosilicate / soda-lime glass (typical flume)
+cfg.n_glass         = 1.473;        % borosilicate / soda-lime glass (typical flume)
 cfg.n_water         = 1.333;        % fresh water at ~20 °C
 
 % -------------------------------------------------------------------------
@@ -48,51 +48,66 @@ cfg.n_water         = 1.333;        % fresh water at ~20 °C
 % IMPORTANT: set these carefully — errors here propagate directly into
 %            the refraction-corrected ray model.
 
-cfg.walls(1).normal     = [1  0  0];   % Camera 1 — +X side wall
-cfg.walls(1).point      = [0.05 0 0];  % inner face at X=50mm
-cfg.walls(1).thickness  = 0.010;
+% -------------------------------------------------------------------------
+% WALL GEOMETRY
+% Coordinate system: origin at measurement volume centre
+%   X: across tank (left wall to right wall)
+%   Y: along tank length (away from observer)
+%   Z: vertical (upward)
+% -------------------------------------------------------------------------
+% Left wall (cameras 1 and 2 shoot through this)
+cfg.walls(1).normal    = [-1, 0, 0];
+cfg.walls(1).point     = [-0.216, 0, 0];
+cfg.walls(1).thickness = 0.00635;
 
-cfg.walls(2).normal     = [1  0  0];   % Camera 2 — same wall
-cfg.walls(2).point      = [0.05 0 0];
-cfg.walls(2).thickness  = 0.010;
+cfg.walls(2).normal    = [-1, 0, 0];
+cfg.walls(2).point     = [-0.216, 0, 0];
+cfg.walls(2).thickness = 0.00635;
 
-cfg.walls(3).normal     = [-1  0  0];  % Camera 3 — opposite wall
-cfg.walls(3).point      = [-0.05 0 0]; % inner face at X=-50mm
-cfg.walls(3).thickness  = 0.010;
+% Right wall (cameras 3 and 4 shoot through this)
+cfg.walls(3).normal    = [+1, 0, 0];
+cfg.walls(3).point     = [+0.216, 0, 0];
+cfg.walls(3).thickness = 0.00635;
 
-cfg.walls(4).normal     = [0  0  -1];  % Camera 4 — floor
-cfg.walls(4).point      = [0 0 -0.05]; % inner face at Z=-50mm
-cfg.walls(4).thickness  = 0.010;
+cfg.walls(4).normal    = [+1, 0, 0];
+cfg.walls(4).point     = [+0.216, 0, 0];
+cfg.walls(4).thickness = 0.00635;
+
+%IMPORTANT: Change triangulateRefractive to account for flume vs fish tank
 
 % -------------------------------------------------------------------------
 % APPROXIMATE CAMERA POSES (for bundle adjustment initialisation)
 %   C_approx: approximate camera centre in world coords [m]
 %   target:   a point the camera is roughly aimed at [m]
 % -------------------------------------------------------------------------
-cfg.initPoses(1).C_approx = [ 0.35,  0.00,  0.10];
-cfg.initPoses(1).target   = [ 0.00,  0.00,  0.00];
+% Camera 1 — left side, near end
+cfg.initPoses(1).C_approx = [-1.270,  0.025,  0.000];
+cfg.initPoses(1).target   = [ 0.000,  0.000,  0.000];
 
-cfg.initPoses(2).C_approx = [ 0.35,  0.05, -0.05];
-cfg.initPoses(2).target   = [ 0.00,  0.00,  0.00];
+% Camera 2 — left side, far end
+cfg.initPoses(2).C_approx = [-1.270,  0.508,  0.000];
+cfg.initPoses(2).target   = [ 0.000,  0.000,  0.000];
 
-cfg.initPoses(3).C_approx = [-0.35,  0.00,  0.05];
-cfg.initPoses(3).target   = [ 0.00,  0.00,  0.00];
+% Camera 3 — right side, near end
+cfg.initPoses(3).C_approx = [ 1.181, -0.051,  0.000];
+cfg.initPoses(3).target   = [ 0.000,  0.000,  0.000];
 
-cfg.initPoses(4).C_approx = [ 0.00,  0.00, -0.35];
-cfg.initPoses(4).target   = [ 0.00,  0.00,  0.00];
+% Camera 4 — right side, far end
+cfg.initPoses(4).C_approx = [ 1.181,  0.305,  0.000];
+cfg.initPoses(4).target   = [ 0.000,  0.000,  0.000];
 
 % -------------------------------------------------------------------------
 % 4.  WAND GEOMETRY
 % -------------------------------------------------------------------------
-cfg.wandLength      = 0.100;        % distance between the two LED tips [m]
+cfg.wandLength      = 0.120;        % distance between the two LED tips [m]
                                     % Measure with calipers — accuracy matters!
 
 % -------------------------------------------------------------------------
 % 5.  DATA PATHS
 % -------------------------------------------------------------------------
-cfg.airCalibDir     = 'data/air_calibration';      % folder of checkerboard images per camera
+cfg.airCalibDir     = 'data\air_calibration';      % folder of checkerboard images per camera
                                               % sub-folders: cam1/ cam2/ cam3/ cam4/
-cfg.wandImageDir    = 'data/wand_images';    % synchronised wand image sets
+cfg.wandImageDir    = 'data\wand_calibration';    % synchronised wand image sets
                                               % sub-folders: cam1/ cam2/ cam3/ cam4/
 cfg.resultsDir      = 'results';             % all outputs written here
 
@@ -105,10 +120,10 @@ cfg.cbBoardSize     = [9 12];        % inner corners [cols rows]
 % -------------------------------------------------------------------------
 % 7.  LED DETECTION (Phase 2)
 % -------------------------------------------------------------------------
-cfg.led.minArea         = 5;        % min blob area [px²]
-cfg.led.maxArea         = 500;      % max blob area [px²]
-cfg.led.intensityPct    = 98;       % percentile threshold for bright-pixel mask
-cfg.led.gaussSigma      = 1.5;      % Gaussian pre-blur sigma [px]
+cfg.led.minArea         = 30;        % min blob area [px²]
+cfg.led.maxArea         = 2200;      % max blob area [px²]
+cfg.led.intensityPct    = 90;       % percentile threshold for bright-pixel mask
+cfg.led.gaussSigma      = 2.0;      % Gaussian pre-blur sigma [px]
 cfg.led.subpixel        = true;     % use intensity-weighted centroid refinement
 
 % -------------------------------------------------------------------------

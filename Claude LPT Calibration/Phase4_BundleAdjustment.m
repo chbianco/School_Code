@@ -84,13 +84,22 @@ for f = 1:nFrames
     frameValid(f) = nSeen >= 2;
 end
 validFrames = find(frameValid);
+
+% Subsample frames for faster BA
+maxFrames = 400;
+if numel(validFrames) > maxFrames
+    idx = round(linspace(1, numel(validFrames), maxFrames));
+    validFrames = validFrames(idx);
+    fprintf('  Subsampled to %d frames for BA\n', numel(validFrames));
+end
+
 fprintf('  Frames used in BA: %d / %d\n', numel(validFrames), nFrames);
 
 % -------------------------------------------------------------------------
 % INITIALISATION
 % -------------------------------------------------------------------------
 fprintf('\nInitialising camera poses...\n');
-[poses0, wandPts0] = initialisePoses(obs, validFrames, Ks, distCoeffs, cfg);
+[poses0, wandPts0, validFrames] = initialisePoses(obs, validFrames, Ks, distCoeffs, cfg);
 
 % -------------------------------------------------------------------------
 % BUNDLE ADJUSTMENT  — lsqnonlin with analytical structure
@@ -125,6 +134,13 @@ opts = optimoptions('lsqnonlin', ...
 costFun = @(x) bundleAdjustmentCost(x, obs, validFrames, Ks, distCoeffs, ...
                                      cfg.walls, n, cfg.wandLength, nCams);
 
+[~, initErr] = computePerCameraError(x0, obs, validFrames, Ks, ...
+                distCoeffs, cfg.walls, n, cfg.wandLength, nCams);
+fprintf('Initial per-camera reprojection errors:\n');
+for c = 1:nCams
+    fprintf('  Cam %d: %.2f px\n', c, initErr(c));
+end
+
 % Bounds: camera translations within ±2m, rotations unbounded
 nParams = numel(x0);
 nCamParams = nCams * 6;
@@ -133,8 +149,8 @@ ub =  inf(nParams, 1);
 % Bound camera translations (params 4,5,6 of each camera block)
 for c = 1:nCams
     idx = (c-1)*6 + (4:6);
-    lb(idx) = -2;
-    ub(idx) =  2;
+    lb(idx) = -5;
+    ub(idx) =  5;
 end
 
 [x_opt, ~, residuals, exitflag, output, ~, J_sparse] = ...
@@ -241,7 +257,7 @@ end
 % =========================================================================
 %  INITIALISATION
 % =========================================================================
-function [poses0, wandPts0] = initialisePoses(obs, validFrames, Ks, distCoeffs, cfg)
+function [poses0, wandPts0, validFrames] = initialisePoses(obs, validFrames, Ks, distCoeffs, cfg)
 % Initialise camera poses from approximate positions specified in cfg.initPoses.
 % This is far more robust than essential matrix initialisation for refractive
 % systems where the pinhole approximation breaks down at oblique angles.
@@ -325,7 +341,7 @@ function [poses0, wandPts0] = initialisePoses(obs, validFrames, Ks, distCoeffs, 
                              Ks{c1}, Ks{c2}, pose1, pose2);
         d = norm(XA - XB);
         if d > 1e-6 && d < 10  % sanity check
-            scales(end+1) = wL / d; %#ok<AGROW>
+            scales(end+1) = wL / d; 
         end
     end
 
@@ -365,51 +381,61 @@ function [poses0, wandPts0] = initialisePoses(obs, validFrames, Ks, distCoeffs, 
     end
 
     fprintf('  Initialising %d wand poses...\n', nValid);
+    goodFrames = true(nValid, 1);
     for fi = 1:nValid
         f    = validFrames(fi);
         seen = find(~any(isnan(obs{f}(:,1:2)), 2));
-        c1_  = seen(1);
-        c2_  = seen(min(2, end));
-
-        % Try refraction-aware triangulation first, fall back to DLT
-        obsA = NaN(nCams,2); obsB = NaN(nCams,2);
-        for c = seen'
-            obsA(c,:) = obs{f}(c,1:2);
-            obsB(c,:) = obs{f}(c,3:4);
+        
+        % Try all camera pairs, use best triangulation
+        bestXA = []; bestXB = []; bestDist = inf;
+        for pi = 1:numel(seen)
+            for pj = pi+1:numel(seen)
+                ca = seen(pi); cb = seen(pj);
+                % Skip same-side camera pairs (poor geometry)
+                if cfg.walls(ca).normal(1) == cfg.walls(cb).normal(1)
+                    continue;
+                end
+                poseA = struct('R',R_world{ca},'t',t_world{ca});
+                poseB = struct('R',R_world{cb},'t',t_world{cb});
+                XA_try = dltTriangulate(obs{f}(ca,1:2)', obs{f}(cb,1:2)', ...
+                                         Ks{ca}, Ks{cb}, poseA, poseB);
+                XB_try = dltTriangulate(obs{f}(ca,3:4)', obs{f}(cb,3:4)', ...
+                                         Ks{ca}, Ks{cb}, poseA, poseB);
+                d = norm(XA_try - XB_try);
+                distFromOrigin = max(norm(XA_try), norm(XB_try));
+                if distFromOrigin < 0.5 && d < 0.3 && d > 0.05
+                    if abs(d - cfg.wandLength) < bestDist
+                        bestDist = abs(d - cfg.wandLength);
+                        bestXA = XA_try; bestXB = XB_try;
+                    end
+                end
+            end
         end
-
-        rA = triangulateRefractive(obsA, camPoses, Ks, distCoeffs, wallGeoms, n, cfg.recon);
-        rB = triangulateRefractive(obsB, camPoses, Ks, distCoeffs, wallGeoms, n, cfg.recon);
-
-        if ~any(isnan(rA.pos)) && ~any(isnan(rB.pos))
-            XA = rA.pos; XB = rB.pos;
-        else
-            % Fall back to DLT
-            pose1 = struct('R',R_world{c1_},'t',t_world{c1_});
-            pose2 = struct('R',R_world{c2_},'t',t_world{c2_});
-            XA = dltTriangulate(obs{f}(c1_,1:2)', obs{f}(c2_,1:2)', ...
-                                 Ks{c1_}, Ks{c2_}, pose1, pose2);
-            XB = dltTriangulate(obs{f}(c1_,3:4)', obs{f}(c2_,3:4)', ...
-                                 Ks{c1_}, Ks{c2_}, pose1, pose2);
+        
+        if isempty(bestXA)
+            goodFrames(fi) = false;
+            continue;
         end
-
-        mid  = (XA + XB) / 2;
-        wdir = XB - XA;
+        
+        mid  = (bestXA + bestXB) / 2;
+        wdir = bestXB - bestXA;
         wnorm = norm(wdir);
         if wnorm < 1e-8, wdir = [1;0;0]; else, wdir = wdir/wnorm; end
-
-        % Encode wand direction as axis-angle from [1;0;0]
         ax  = cross([1;0;0], wdir);
         axn = norm(ax);
         if axn < 1e-8
             aa_wand = [0 0 0];
         else
-            ang     = atan2(axn, dot([1;0;0], wdir));
+            ang = atan2(axn, dot([1;0;0], wdir));
             aa_wand = (ax/axn * ang)';
         end
-
         wandPts0(fi,:) = [aa_wand, mid'];
     end
+    
+    % Remove bad frames
+    validFrames = validFrames(goodFrames);
+    wandPts0    = wandPts0(goodFrames,:);
+    fprintf('  Good wand initialisations: %d / %d\n', sum(goodFrames), nValid);
 
     fprintf('  Initialisation complete.\n');
  end

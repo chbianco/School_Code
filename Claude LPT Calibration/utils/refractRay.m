@@ -7,9 +7,8 @@ function ray_out = refractRay(rayOrigin, rayDir, wallNormal, wallPoint, ...
     rayOrigin  = rayOrigin(:);
 
     outerPoint = wallPoint + glassThick * wallNormal;
-    
-    
-    if dot(wallNormal, rayDir) > 0
+
+    if dot(wallNormal(:), rayDir(:)) > 0
         wallNormal = -wallNormal;
     end
 

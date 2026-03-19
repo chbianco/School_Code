@@ -81,7 +81,7 @@ for c = 1:nCams
         fpath = fullfile(camDirs{c}, frameSets{c}{i});
         im    = imread(fpath);
         if size(im,3)==3, im = rgb2gray(im); end
-        stack(:,:,i) = double(im); 
+        stack(:,:,i) = double(im); %#ok<AGROW>
     end
     bg{c} = median(stack, 3);
     fprintf('  Camera %d background computed from %d frames\n', c, bgFrames);
@@ -127,7 +127,7 @@ for f = 1:nFrames
 
         % Morphological clean-up
         mask = bwareaopen(mask, detCfg.minArea);
-        mask = imclose(mask, strel('disk', 4));
+        mask = imclose(mask, strel('disk', 2));
 
         % Connected components
         cc    = bwconncomp(mask);
@@ -177,8 +177,8 @@ end
 % -------------------------------------------------------------------------
 % 4.  Interactive Verification GUI
 % -------------------------------------------------------------------------
-% fprintf('\nLaunching verification GUI...\n');
-% detections = verificationGUI(detections, camDirs, frameSets, nCams, nFrames);
+fprintf('\nLaunching verification GUI...\n');
+detections = verificationGUI(detections, camDirs, frameSets, nCams, nFrames);
 
 % -------------------------------------------------------------------------
 % 5.  Save

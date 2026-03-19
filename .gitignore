@@ -10,3 +10,8 @@ Thesis/MaxDataAnalysis.asv
 Thesis/AnalyzeLaserPosition.asv
 .DS_Store
 Turbulence Lab Codes/analyze_velocity.asv
+
+Claude LPT Calibration/**/*.png
+Claude LPT Calibration/**/*.mov
+
+

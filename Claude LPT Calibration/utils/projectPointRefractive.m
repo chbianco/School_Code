@@ -22,8 +22,8 @@ function uv = projectPointRefractive(X_world, camPose, K, distCoeffs, wallGeom, 
     d_air = d_air / norm(d_air);
 
     % Refract through wall
-    ray = refractRay(C, d_air, wallGeom.normal, wallGeom.point, ...
-                     wallGeom.thickness, n.air, n.glass, n.water);
+    ray = refractRay(C(:), d_air(:), wallGeom.normal(:), wallGeom.point(:), ...
+                 wallGeom.thickness, n.air, n.glass, n.water);
 
     if ~ray.valid
         uv = [NaN; NaN];
