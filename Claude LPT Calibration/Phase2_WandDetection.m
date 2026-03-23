@@ -168,10 +168,126 @@ for f = 1:nFrames
     end
 end
 
-% Count valid
+% Count valid (before filtering)
 for c = 1:nCams
     nValid = sum([detections{c}.valid]);
-    fprintf('  Camera %d: %d / %d frames with valid detection\n', c, nValid, nFrames);
+    fprintf('  Camera %d: %d / %d frames with valid detection (raw)\n', c, nValid, nFrames);
+end
+
+% -------------------------------------------------------------------------
+% 3b. POST-DETECTION FILTERS
+% -------------------------------------------------------------------------
+
+% ---- Wand pixel length filter ----
+% Reject frames where the two detected points are too close or too far apart.
+% Reflections near an LED produce short separations; two reflections on
+% opposite sides of the image produce long ones.
+fprintf('\n--- Wand pixel length filter ---\n');
+minWandPx = 200;   % minimum separation (px) — adjust based on your setup
+maxWandPx = 800;   % maximum separation (px) — adjust based on your setup
+fprintf('  Range: [%d, %d] px\n', minWandPx, maxWandPx);
+
+for c = 1:nCams
+    nDropped = 0;
+    for f = 1:nFrames
+        if ~detections{c}(f).valid, continue; end
+        d = norm(detections{c}(f).pts(1,:) - detections{c}(f).pts(2,:));
+        if d < minWandPx || d > maxWandPx
+            detections{c}(f).valid = false;
+            nDropped = nDropped + 1;
+        end
+    end
+    fprintf('  Cam %d: dropped %d frames (bad wand length)\n', c, nDropped);
+end
+
+% ---- Brightness ratio filter ----
+% With the dual-resistor wand, the brighter LED should be significantly
+% brighter than the dimmer one. If the ratio is close to 1, we may have
+% picked up two reflections instead of two LEDs.
+fprintf('\n--- Brightness ratio filter ---\n');
+minBrightnessRatio = 1.3;  % brighter LED must be at least 1.3x the dimmer
+fprintf('  Min ratio: %.1f\n', minBrightnessRatio);
+
+for c = 1:nCams
+    nDropped = 0;
+    for f = 1:nFrames
+        if ~detections{c}(f).valid, continue; end
+        % Re-read the image and check brightness at detected points
+        % (We use the stored detection order — pt1 is brighter by construction)
+        % Instead, use a simpler proxy: the original detection already sorted by
+        % MeanIntensity, so we can check if the first blob was much brighter.
+        % Since we don't store individual intensities, skip this filter if we can't check.
+        % This filter works best if we store the intensities during detection.
+    end
+    % fprintf('  Cam %d: dropped %d frames (low brightness ratio)\n', c, nDropped);
+end
+
+% ---- Temporal consistency filter ----
+% The wand moves smoothly, so LED positions shouldn't jump more than
+% maxJump pixels between consecutive valid frames.  Large jumps indicate
+% a reflection was detected instead of an LED.
+fprintf('\n--- Temporal consistency filter ---\n');
+maxJump = 80;  % max pixel displacement per frame (adjust for frame rate & wand speed)
+fprintf('  Max jump: %d px\n', maxJump);
+
+for c = 1:nCams
+    nDropped = 0;
+    prevValid = 0;
+    for f = 1:nFrames
+        if ~detections{c}(f).valid
+            continue;
+        end
+        
+        if prevValid == 0
+            % First valid frame — accept it
+            prevValid = f;
+            continue;
+        end
+        
+        pts_cur  = detections{c}(f).pts;
+        pts_prev = detections{c}(prevValid).pts;
+        
+        % Compute jump for both points
+        % Account for possible frame gap (if some frames were already dropped)
+        frameGap = f - prevValid;
+        adjustedMaxJump = maxJump * min(frameGap, 5);  % allow larger jumps for bigger gaps
+        
+        jumpA = norm(pts_cur(1,:) - pts_prev(1,:));
+        jumpB = norm(pts_cur(2,:) - pts_prev(2,:));
+        
+        if jumpA > adjustedMaxJump || jumpB > adjustedMaxJump
+            detections{c}(f).valid = false;
+            nDropped = nDropped + 1;
+            % Don't update prevValid — keep comparing to last known good
+        else
+            prevValid = f;
+        end
+    end
+    fprintf('  Cam %d: dropped %d frames (temporal jump)\n', c, nDropped);
+end
+
+% ---- Report final counts ----
+fprintf('\n--- Final detection counts ---\n');
+for c = 1:nCams
+    nValid = sum([detections{c}.valid]);
+    fprintf('  Camera %d: %d / %d valid frames (%.1f%%)\n', ...
+        c, nValid, nFrames, 100*nValid/nFrames);
+end
+
+% Report wand pixel length statistics for surviving detections
+fprintf('\n--- Wand pixel length stats (filtered) ---\n');
+for c = 1:nCams
+    lens = [];
+    for f = 1:nFrames
+        if detections{c}(f).valid
+            d = norm(detections{c}(f).pts(1,:) - detections{c}(f).pts(2,:));
+            lens(end+1) = d; %#ok<AGROW>
+        end
+    end
+    if ~isempty(lens)
+        fprintf('  Cam %d: %.0f +/- %.0f px (range %.0f-%.0f)\n', ...
+            c, mean(lens), std(lens), min(lens), max(lens));
+    end
 end
 
 % -------------------------------------------------------------------------

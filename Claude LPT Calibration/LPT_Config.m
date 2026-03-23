@@ -26,7 +26,7 @@ cfg.imageSize       = [1280 1024];  % [width height] pixels  — adjust to your 
 % 2.  REFRACTIVE INDICES
 % -------------------------------------------------------------------------
 cfg.n_air           = 1.000;        % air
-cfg.n_glass         = 1.473;        % borosilicate / soda-lime glass (typical flume)
+cfg.n_glass         = 1.52;         % aquarium glass
 cfg.n_water         = 1.333;        % fresh water at ~20 °C
 
 % -------------------------------------------------------------------------
@@ -81,19 +81,19 @@ cfg.walls(4).thickness = 0.00635;
 %   target:   a point the camera is roughly aimed at [m]
 % -------------------------------------------------------------------------
 % Camera 1 — left side, near end
-cfg.initPoses(1).C_approx = [-1.270,  0.025,  0.000];
+cfg.initPoses(1).C_approx = [-0.9907,  -.1524,  -.1524];
 cfg.initPoses(1).target   = [ 0.000,  0.000,  0.000];
 
 % Camera 2 — left side, far end
-cfg.initPoses(2).C_approx = [-1.270,  0.508,  0.000];
+cfg.initPoses(2).C_approx = [-1.0542,  0.2286,  -.1524];
 cfg.initPoses(2).target   = [ 0.000,  0.000,  0.000];
 
 % Camera 3 — right side, near end
-cfg.initPoses(3).C_approx = [ 1.181, -0.051,  0.000];
+cfg.initPoses(3).C_approx = [ 1.0796, -0.27305,  0.2286];
 cfg.initPoses(3).target   = [ 0.000,  0.000,  0.000];
 
 % Camera 4 — right side, far end
-cfg.initPoses(4).C_approx = [ 1.181,  0.305,  0.000];
+cfg.initPoses(4).C_approx = [ 1.0796,  0.1397,  0.2286];
 cfg.initPoses(4).target   = [ 0.000,  0.000,  0.000];
 
 % -------------------------------------------------------------------------
@@ -114,17 +114,21 @@ cfg.resultsDir      = 'results';             % all outputs written here
 % -------------------------------------------------------------------------
 % 6.  CHECKERBOARD (Phase 1)
 % -------------------------------------------------------------------------
-cfg.cbSquareSize    = 0.0192;        % physical size of one square [m]
-cfg.cbBoardSize     = [9 12];        % inner corners [cols rows]
+cfg.cbSquareSize    = 0.00780;        % physical size of one square [m]
+cfg.cbBoardSize     = [13 14];        % inner corners [cols rows]
 
 % -------------------------------------------------------------------------
 % 7.  LED DETECTION (Phase 2)
 % -------------------------------------------------------------------------
-cfg.led.minArea         = 30;        % min blob area [px²]
-cfg.led.maxArea         = 2200;      % max blob area [px²]
-cfg.led.intensityPct    = 90;       % percentile threshold for bright-pixel mask
-cfg.led.gaussSigma      = 2.0;      % Gaussian pre-blur sigma [px]
-cfg.led.subpixel        = true;     % use intensity-weighted centroid refinement
+cfg.led.minArea         = 400;       % increase to reject small noise
+cfg.led.maxArea         = 2500;     % increase to allow larger sanded LED blobs
+cfg.led.intensityPct    = 95;       % tighter threshold to reject reflections
+cfg.led.gaussSigma      = 3.0;     % more blur to smooth the irregular LED shapes
+
+%Filtering parameters
+cfg.led.maxJump = 80;
+cfg.led.minWandPx = 200;
+cfg.led.maxWandPx = 900; 
 
 % -------------------------------------------------------------------------
 % 8.  BUNDLE ADJUSTMENT (Phase 4)
