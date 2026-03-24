@@ -56,7 +56,7 @@ end
 % ---- LED A/B correspondence fix ----
 % The brightness-based LED ordering from Phase 2 is inconsistent across
 % cameras. Exhaustive search of all 16 swap combinations found that
-% swapping cameras 1 and 2 maximises cross-side epipolar inliers (5007).
+% swapping cameras 1 and 4 maximises cross-side epipolar inliers (3819).
 % Swap: [uA vA uB vB] -> [uB vB uA vA]
 swapCams = [1, 4];  % cameras whose A/B assignment should be flipped
 fprintf('--- LED correspondence fix: swapping A/B for cameras [%s] ---\n', num2str(swapCams));
@@ -595,7 +595,7 @@ for c=1:nCams
     cameras(c).wall=cfg.walls(c);cameras(c).reprojRMS=perCamErr(c);cameras(c).poseStd=poseStd(c,:);
 end
 save(fullfile(resultsDir,'extrinsics.mat'),'cameras','cfg');
-save(fullfile(resultsDir,'bundle_adjustment.mat'),'cameras','wandPts_opt','residuals','covMatrix','frameErrors','outlierFrames','costHistory','cfg');
+save(fullfile(resultsDir,'bundle_adjustment.mat'),'cameras','wandPts_opt','residuals','covMatrix','frameErrors','outlierFrames','costHistory','cfg','validFrames','obs');
 fprintf('\n[Phase 4] Saved to %s\n',resultsDir);
 
 % Figures

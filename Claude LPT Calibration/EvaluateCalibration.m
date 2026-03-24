@@ -40,21 +40,39 @@ fprintf('=== A. Reprojection Error Summary ===\n\n');
 fprintf('%-10s %-20s %-20s\n', 'Camera', 'RMS Reproj (px)', 'Max Reproj (px)');
 fprintf('%s\n', repmat('-',1,52));
 % Load observations and recompute reprojection errors fresh
-phase2_tmp = load(fullfile(resultsDir,'wand_detections.mat'));
-det_tmp    = phase2_tmp.detections;
-nFrames_tmp = phase2_tmp.nFrames;
+% Use the BA's own validFrames and obs if available (saved by Phase4)
+if isfield(ba, 'validFrames') && isfield(ba, 'obs')
+    validFrames_tmp = ba.validFrames;
+    obs_tmp         = ba.obs;
+    nFrames_tmp     = numel(ba.obs);
+    fprintf('  Using BA-saved validFrames (%d frames)\n\n', numel(validFrames_tmp));
+else
+    % Fallback: reconstruct from Phase 2 detections
+    phase2_tmp = load(fullfile(resultsDir,'wand_detections.mat'));
+    det_tmp    = phase2_tmp.detections;
+    nFrames_tmp = phase2_tmp.nFrames;
 
-% Build obs matrix
-obs_tmp = cell(nFrames_tmp,1);
-for f = 1:nFrames_tmp
-    obs_tmp{f} = NaN(nCams,4);
-    for c = 1:nCams
-        if det_tmp{c}(f).valid
-            obs_tmp{f}(c,:) = [det_tmp{c}(f).pts(1,:), det_tmp{c}(f).pts(2,:)];
+    obs_tmp = cell(nFrames_tmp,1);
+    for f = 1:nFrames_tmp
+        obs_tmp{f} = NaN(nCams,4);
+        for c = 1:nCams
+            if det_tmp{c}(f).valid
+                obs_tmp{f}(c,:) = [det_tmp{c}(f).pts(1,:), det_tmp{c}(f).pts(2,:)];
+            end
         end
     end
+    % Match to the number of wand points saved
+    nWand = size(ba.wandPts_opt, 1);
+    allValid = find(cellfun(@(o) sum(~any(isnan(o),2))>=2, obs_tmp));
+    if numel(allValid) > nWand
+        % Subsample to match BA frame count
+        validFrames_tmp = allValid(round(linspace(1, numel(allValid), nWand)));
+    else
+        validFrames_tmp = allValid(1:min(numel(allValid), nWand));
+    end
+    fprintf('  Reconstructed validFrames (%d frames, %d wand pts)\n\n', ...
+        numel(validFrames_tmp), nWand);
 end
-validFrames_tmp = find(cellfun(@(o) sum(~any(isnan(o),2))>=2, obs_tmp));
 
 % Recompute per-camera errors
 Ks_tmp        = {cameras.K};
@@ -259,7 +277,7 @@ for c1 = 1:nCams
                 p2  = [det2.pts(pt,:), 1]';
                 l2  = F * p1;        % epipolar line in cam2
                 d   = abs(p2'*l2) / norm(l2(1:2));   % point-to-line distance
-                errs(end+1) = d; %#ok<AGROW>
+                errs(end+1) = d; 
             end
         end
 
