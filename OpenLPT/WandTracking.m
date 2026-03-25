@@ -27,23 +27,23 @@ clear; clc;
 % =========================================================================
 
 % --- Paths ---
-wandDir    = 'C:\path\to\wand\images';   % parent folder containing cam1/, cam2/, ...
-resultsDir = 'C:\path\to\results';       % output folder (must exist)
+wandDir    = 'wand_images';   % parent folder containing cam1/, cam2/, ...
+resultsDir = 'results';       % output folder (must exist)
 
 % --- Camera / frame settings ---
 nCams      = 4;       % number of cameras
-startFrame = 461;     % skip frames before wand appears (set to 1 for no skip)
+startFrame = 1;     % skip frames before wand appears (set to 1 for no skip)
 
 % --- LED detection parameters ---
-detCfg.gaussSigma    = 2.0;   % Gaussian blur sigma (px)
+detCfg.gaussSigma    = 1.5;   % Gaussian blur sigma (px)
 detCfg.intensityPct  = 97;    % threshold at this percentile of non-zero pixels
-detCfg.minArea       = 10;    % min blob area (px²)
-detCfg.maxArea       = 2000;  % max blob area (px²)
+detCfg.minArea       = 20;    % min blob area (px²)
+detCfg.maxArea       = 800;  % max blob area (px²)
 
 % --- Post-detection filters ---
-minWandPx = 200;   % min wand pixel length (px)
-maxWandPx = 800;   % max wand pixel length (px)
-maxJump   = 80;    % max per-frame displacement for temporal filter (px)
+minWandPx = 80;   % min wand pixel length (px)
+maxWandPx = 900;   % max wand pixel length (px)
+maxJump   = 150;    % max per-frame displacement for temporal filter (px)
 
 % --- CSV export parameters ---
 RADIUS     = 10.0;   % placeholder radius written to CSV
@@ -129,6 +129,13 @@ end
 fprintf('\nDetecting LEDs...\n');
 for f = 1:nFrames
     for c = 1:nCams
+
+         % Skip background frames — no wand present
+               if f <= bgFrames
+                   detections{c}(f).frame = f;
+                   continue;
+               end
+              
         fpath = fullfile(camDirs{c}, frameSets{c}{f});
         im    = double(imread(fpath));
         if size(im,3)==3, im = mean(im,3); end
@@ -251,6 +258,42 @@ for c = 1:nCams
     fprintf('  Cam %d: dropped %d frames (temporal jump)\n', c, nDropped);
 end
 
+ % -------------------------------------------------------------------------
+  % 3c. ENFORCE LARGE/SMALL TEMPORAL CONSISTENCY VIA TRACKING
+  % -------------------------------------------------------------------------
+  fprintf('\n--- Enforcing Large/Small temporal consistency ---\n');
+  for c = 1:nCams
+      prevValid = 0;
+      nSwapped  = 0;
+      for f = 1:nFrames
+          if ~detections{c}(f).valid, continue; end
+
+          pts = detections{c}(f).pts;  % row 1 = current Large, row 2 = current Small
+
+          if prevValid == 0
+              % First valid frame: initialize so that Large = blob with higher Y
+              % (lower in image = same physical LED for all upright cameras)
+              if pts(1,2) < pts(2,2)   % row 1 is actually higher (smaller Y)
+                  detections{c}(f).pts = pts([2,1], :);  % swap
+                  nSwapped = nSwapped + 1;
+              end
+          else
+              % Subsequent frames: track which blob is closest to previous Large
+              pts_prev = detections{c}(prevValid).pts;
+              d_keep = norm(pts(1,:) - pts_prev(1,:));  % curr Large → prev Large
+              d_swap = norm(pts(2,:) - pts_prev(1,:));  % curr Small → prev Large
+
+              if d_swap < d_keep
+                  detections{c}(f).pts = pts([2,1], :);  % swap to maintain identity
+                  nSwapped = nSwapped + 1;
+              end
+          end
+
+          prevValid = f;
+      end
+      fprintf('  Camera %d: %d frames re-assigned for consistency\n', c, nSwapped);
+  end
+
 % ---- Final counts ----
 fprintf('\n--- Final detection counts ---\n');
 for c = 1:nCams
@@ -266,7 +309,7 @@ for c = 1:nCams
     for f = 1:nFrames
         if detections{c}(f).valid
             d = norm(detections{c}(f).pts(1,:) - detections{c}(f).pts(2,:));
-            lens(end+1) = d; %#ok<AGROW>
+            lens(end+1) = d; 
         end
     end
     if ~isempty(lens)

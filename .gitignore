@@ -14,5 +14,8 @@ Turbulence Lab Codes/analyze_velocity.asv
 Claude LPT Calibration/**/*.png
 Claude LPT Calibration/**/*.mov
 
+OpenLPT/**/*.png
+OpenLPT/**/*.mov
+
 
 *.asv
