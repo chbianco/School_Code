@@ -32,7 +32,7 @@ resultsDir = 'results';       % output folder (must exist)
 
 % --- Camera / frame settings ---
 nCams      = 4;       % number of cameras
-startFrame = 1;     % skip frames before wand appears (set to 1 for no skip)
+startFrame = 29;     % skip frames before wand appears (set to 1 for no skip)
 
 % --- LED detection parameters ---
 detCfg.gaussSigma    = 1.5;   % Gaussian blur sigma (px)
@@ -41,14 +41,27 @@ detCfg.minArea       = 20;    % min blob area (px²)
 detCfg.maxArea       = 800;  % max blob area (px²)
 
 % --- Post-detection filters ---
-minWandPx = 80;   % min wand pixel length (px)
-maxWandPx = 900;   % max wand pixel length (px)
-maxJump   = 150;    % max per-frame displacement for temporal filter (px)
+minWandPx = 15;   % min wand pixel length (px)
+maxWandPx = 350;   % max wand pixel length (px)
+maxJump   = 120;    % max per-frame displacement for temporal filter (px)
+% --- Per-camera minimum wand length overrides ---
+minWandPxPerCam = containers.Map({1,2,3,4}, {minWandPx, minWandPx, minWandPx, 60});
 
 % --- CSV export parameters ---
-RADIUS     = 10.0;   % placeholder radius written to CSV
+%RADIUS     = 10.0;   % placeholder radius written to CSV
 METRIC     = 0.5;    % placeholder metric written to CSV
 OUTPUT_CSV = fullfile(resultsDir, 'wand_points.csv');
+
+% --- Brightness-based identification ---
+% Large = brighter LED, Small = dimmer LED (assigned per-frame by intensity).
+% Requires one LED to be physically dimmer than the other.
+% minBrightnessRatio: if the two LEDs are closer in brightness than this
+% ratio (bright/dim < threshold), the frame is flagged as ambiguous and
+% marked invalid.  Set to 1.0 to disable.
+minBrightnessRatio = 1.2;
+
+% --- Diagnostics ---
+diagCams = [4];   % 1-indexed camera IDs to log multi-blob frames
 
 % =========================================================================
 %  END CONFIGURATION
@@ -123,7 +136,7 @@ end
 
 detections = cell(nCams, 1);
 for c = 1:nCams
-    detections{c} = repmat(struct('pts',[],'valid',false,'frame',0), nFrames, 1);
+    detections{c} = repmat(struct('pts',[],'radii',[],'intens',[],'valid',false,'frame',0), nFrames, 1);
 end
 
 fprintf('\nDetecting LEDs...\n');
@@ -164,7 +177,7 @@ for f = 1:nFrames
         % Connected components
         cc    = bwconncomp(mask);
         props = regionprops(cc, blurred, ...
-            'Area','WeightedCentroid','MeanIntensity','PixelIdxList');
+            'Area','WeightedCentroid','MeanIntensity','PixelIdxList','MinorAxisLength');
 
         % Filter by area
         areas = [props.Area];
@@ -177,23 +190,31 @@ for f = 1:nFrames
         end
 
         % Sort by mean intensity descending, take top 2
-        % props(1) = brighter = Large ball, props(2) = dimmer = Small ball
+        if numel(props) > 2 && ismember(c, diagCams)
+              fprintf('  [DIAG] Cam %d Frame %d: %d blobs passed filter (areas: %s)\n', ...
+                  c-1, f + startFrame - 1, numel(props), ...
+                  num2str([props.Area]));
+        end
         [~, order] = sort([props.MeanIntensity], 'descend');
         props      = props(order(1:2));
 
         % Sub-pixel centroid (intensity-weighted)
-        pts = zeros(2,2);
+        pts   = zeros(2,2);
+        radii = zeros(2,1);
         for p = 1:2
             [rows, cols] = ind2sub(size(blurred), props(p).PixelIdxList);
             weights      = blurred(props(p).PixelIdxList);
             weights      = weights / sum(weights);
-            pts(p,1)     = sum(cols .* weights);   % u (x)
-            pts(p,2)     = sum(rows .* weights);   % v (y)
+            pts(p,1)     = sum(cols .* weights);        % u (x)
+            pts(p,2)     = sum(rows .* weights);        % v (y)
+            radii(p) = props(p).MinorAxisLength / 2;  % radius from ellipse minor axis (robust to viewing angle)
         end
 
-        detections{c}(f).pts   = pts;
-        detections{c}(f).valid = true;
-        detections{c}(f).frame = f;
+        detections{c}(f).pts    = pts;
+        detections{c}(f).radii  = radii;            % radii(1)=Large, radii(2)=Small
+        detections{c}(f).intens = [props(1).MeanIntensity; props(2).MeanIntensity];
+        detections{c}(f).valid  = true;
+        detections{c}(f).frame  = f;
     end
 
     if mod(f,50)==0
@@ -218,7 +239,7 @@ for c = 1:nCams
     for f = 1:nFrames
         if ~detections{c}(f).valid, continue; end
         d = norm(detections{c}(f).pts(1,:) - detections{c}(f).pts(2,:));
-        if d < minWandPx || d > maxWandPx
+        if d < minWandPxPerCam(c) || d > maxWandPx
             detections{c}(f).valid = false;
             nDropped = nDropped + 1;
         end
@@ -258,41 +279,40 @@ for c = 1:nCams
     fprintf('  Cam %d: dropped %d frames (temporal jump)\n', c, nDropped);
 end
 
- % -------------------------------------------------------------------------
-  % 3c. ENFORCE LARGE/SMALL TEMPORAL CONSISTENCY VIA TRACKING
-  % -------------------------------------------------------------------------
-  fprintf('\n--- Enforcing Large/Small temporal consistency ---\n');
-  for c = 1:nCams
-      prevValid = 0;
-      nSwapped  = 0;
-      for f = 1:nFrames
-          if ~detections{c}(f).valid, continue; end
+% -------------------------------------------------------------------------
+% 3c. VALIDATE BRIGHTNESS SEPARATION & REJECT AMBIGUOUS FRAMES
+% -------------------------------------------------------------------------
+% Large/Small assignment is already done by the intensity sort in the
+% detection loop (row 1 = brighter = Large, row 2 = dimmer = Small).
+% Here we reject frames where the two LEDs are too similar in brightness
+% to be reliably distinguished, and report per-camera statistics.
+fprintf('\n--- Brightness-based Large/Small validation ---\n');
 
-          pts = detections{c}(f).pts;  % row 1 = current Large, row 2 = current Small
-
-          if prevValid == 0
-              % First valid frame: initialize so that Large = blob with higher Y
-              % (lower in image = same physical LED for all upright cameras)
-              if pts(1,2) < pts(2,2)   % row 1 is actually higher (smaller Y)
-                  detections{c}(f).pts = pts([2,1], :);  % swap
-                  nSwapped = nSwapped + 1;
-              end
-          else
-              % Subsequent frames: track which blob is closest to previous Large
-              pts_prev = detections{c}(prevValid).pts;
-              d_keep = norm(pts(1,:) - pts_prev(1,:));  % curr Large → prev Large
-              d_swap = norm(pts(2,:) - pts_prev(1,:));  % curr Small → prev Large
-
-              if d_swap < d_keep
-                  detections{c}(f).pts = pts([2,1], :);  % swap to maintain identity
-                  nSwapped = nSwapped + 1;
-              end
-          end
-
-          prevValid = f;
-      end
-      fprintf('  Camera %d: %d frames re-assigned for consistency\n', c, nSwapped);
-  end
+for c = 1:nCams
+    ratios   = [];
+    nDropped = 0;
+    for f = 1:nFrames
+        if ~detections{c}(f).valid, continue; end
+        intens = detections{c}(f).intens;   % [bright, dim]
+        if intens(2) < 1e-6
+            detections{c}(f).valid = false;
+            nDropped = nDropped + 1;
+            continue;
+        end
+        ratio = intens(1) / intens(2);
+        ratios(end+1) = ratio;
+        if ratio < minBrightnessRatio
+            detections{c}(f).valid = false;
+            nDropped = nDropped + 1;
+        end
+    end
+    if isempty(ratios)
+        fprintf('  Camera %d: no valid frames\n', c);
+    else
+        fprintf('  Camera %d: brightness ratio bright/dim = %.2f +/- %.2f (min %.2f)  |  dropped %d ambiguous frames\n', ...
+            c, mean(ratios), std(ratios), min(ratios), nDropped);
+    end
+end
 
 % ---- Final counts ----
 fprintf('\n--- Final detection counts ---\n');
@@ -357,11 +377,14 @@ for fi = 1:numel(common_frames)
 
         cam_id = c - 1;   % 0-indexed for OpenLPT
 
+        r_large = detections{c}(f).radii(1);
+        r_small = detections{c}(f).radii(2);
+
         % Small written first (insertion order matters in OpenLPT loader)
-        fprintf(fid, '%d,%d,Filtered_Small,0,%.6f,%.6f,%.1f,%.1f\n', ...
-            f, cam_id, x_small, y_small, RADIUS, METRIC);
-        fprintf(fid, '%d,%d,Filtered_Large,1,%.6f,%.6f,%.1f,%.1f\n', ...
-            f, cam_id, x_large, y_large, RADIUS, METRIC);
+        fprintf(fid, '%d,%d,Filtered_Small,0,%.6f,%.6f,%.4f,%.1f\n', ...
+            f, cam_id, x_small, y_small, r_small, METRIC);
+        fprintf(fid, '%d,%d,Filtered_Large,1,%.6f,%.6f,%.4f,%.1f\n', ...
+            f, cam_id, x_large, y_large, r_large, METRIC);
     end
 end
 
