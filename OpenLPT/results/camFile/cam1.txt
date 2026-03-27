@@ -1,40 +1,40 @@
 # Camera Model: (PINHOLE/POLYNOMIAL/PINPLATE)
 PINPLATE
 # Camera Calibration Error:
-0,0
+1.7569402,1.162212
 # Pose Calibration Error:
-0,0
+0.31701559,0.20955365
 # Image Size: (n_row,n_col)
 1024,1280
 # Camera Matrix:
-6394.4979 0 640
-0 6394.4979 512
+5788.0187 0 640
+0 5788.0187 512
 0 0 1
 # Distortion Coefficients:
 0,0,0,0,0
 # Rotation Vector:
-1.025544,1.3660539,2.5576345
+-0.58306672,-0.24807039,2.0604256
 # Rotation Matrix:
--0.77569466 0.24104618 0.58326198
-0.35071778 -0.60370028 0.71592109
-0.52468547 0.75989651 0.3837479
+-0.4385324 -0.74864255 -0.49721591
+0.84526516 -0.53152927 0.05480369
+-0.30531318 -0.3962461 0.86589427
 # Inverse of Rotation Matrix:
--0.77569466 0.35071778 0.52468547
-0.24104618 -0.60370028 0.75989651
-0.58326198 0.71592109 0.3837479
+-0.4385324 0.84526516 -0.30531318
+-0.74864255 -0.53152927 -0.3962461
+-0.49721591 0.05480369 0.86589427
 # Translation Vector:
-66.160327 83.204067 199.38231
+23.677152 18.028026 1012.2932
 # Inverse of Translation Vector:
--82.473936 -117.2273 -174.6689
+304.2112 428.42537 -865.75422
 # Refractive plane reference point plane.pt (Farthest Interface)
--120.59872 -51.498562 -178.83038
+107.20024 116.2901 -31.778218
 # Refractive plane normal plane.norm_vector (camera->object direction)
-0 -1.3877788e-17 1
+-8.6736174e-19 1.0503209e-19 1
 # refract_array (ONE token, comma-separated, farthest->nearest: obj->win->air)
 # n_plate = 1
 1.3300,1.5200,1.0000
 # w_array (ONE token, comma-separated, plate thicknesses in mm)
-10.9671
+9.9494
 # proj_tol
 1e-6
 # proj_nmax
@@ -45,6 +45,6 @@ PINPLATE
 # VERSION=2
 # CAM_ID=1
 # WINDOW_ID=0
-# PLANE_PT_EXPORT=[-120.5987,-51.4986,-178.8304]
-# PLANE_N=[0.000000,-0.000000,1.000000]
+# PLANE_PT_EXPORT=[107.2002,116.2901,-31.7782]
+# PLANE_N=[-0.000000,0.000000,1.000000]
 # --- END_REFRACTION_META ---

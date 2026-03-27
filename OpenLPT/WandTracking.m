@@ -32,18 +32,18 @@ resultsDir = 'results';       % output folder (must exist)
 
 % --- Camera / frame settings ---
 nCams      = 4;       % number of cameras
-startFrame = 29;     % skip frames before wand appears (set to 1 for no skip)
+startFrame = 1;     % skip frames before wand appears (set to 1 for no skip)
 
 % --- LED detection parameters ---
 detCfg.gaussSigma    = 1.5;   % Gaussian blur sigma (px)
-detCfg.intensityPct  = 97;    % threshold at this percentile of non-zero pixels
+detCfg.intensityPct  = 93;    % threshold at this percentile of non-zero pixels
 detCfg.minArea       = 20;    % min blob area (px²)
 detCfg.maxArea       = 800;  % max blob area (px²)
 
 % --- Post-detection filters ---
-minWandPx = 15;   % min wand pixel length (px)
-maxWandPx = 350;   % max wand pixel length (px)
-maxJump   = 120;    % max per-frame displacement for temporal filter (px)
+minWandPx = 20;   % min wand pixel length (px)
+maxWandPx = 700;   % max wand pixel length (px)
+maxJump   = 150;    % max per-frame displacement for temporal filter (px)
 % --- Per-camera minimum wand length overrides ---
 minWandPxPerCam = containers.Map({1,2,3,4}, {minWandPx, minWandPx, minWandPx, 60});
 
@@ -58,10 +58,10 @@ OUTPUT_CSV = fullfile(resultsDir, 'wand_points.csv');
 % minBrightnessRatio: if the two LEDs are closer in brightness than this
 % ratio (bright/dim < threshold), the frame is flagged as ambiguous and
 % marked invalid.  Set to 1.0 to disable.
-minBrightnessRatio = 1.2;
+minBrightnessRatio = 1.05;
+minBrightnessRatioPerCam = containers.Map({1,2,3,4}, {minBrightnessRatio, 1.15, minBrightnessRatio, 1.5});
 
 % --- Diagnostics ---
-diagCams = [4];   % 1-indexed camera IDs to log multi-blob frames
 
 % =========================================================================
 %  END CONFIGURATION
@@ -190,11 +190,6 @@ for f = 1:nFrames
         end
 
         % Sort by mean intensity descending, take top 2
-        if numel(props) > 2 && ismember(c, diagCams)
-              fprintf('  [DIAG] Cam %d Frame %d: %d blobs passed filter (areas: %s)\n', ...
-                  c-1, f + startFrame - 1, numel(props), ...
-                  num2str([props.Area]));
-        end
         [~, order] = sort([props.MeanIntensity], 'descend');
         props      = props(order(1:2));
 
@@ -301,7 +296,7 @@ for c = 1:nCams
         end
         ratio = intens(1) / intens(2);
         ratios(end+1) = ratio;
-        if ratio < minBrightnessRatio
+        if ratio < minBrightnessRatioPerCam(c)
             detections{c}(f).valid = false;
             nDropped = nDropped + 1;
         end
@@ -394,7 +389,7 @@ fprintf('  Wrote %d frames x %d cameras to %s\n', numel(common_frames), nCams, O
 % -------------------------------------------------------------------------
 % 6.  Detection overview montage
 % -------------------------------------------------------------------------
-generateDetectionOverview(detections, camDirs, frameSets, nCams, nFrames, resultsDir);
+generateDetectionOverview(detections, camDirs, frameSets, nCams, nFrames, resultsDir, startFrame);
 
 fprintf('\n=== WandTracking complete ===\n');
 
@@ -402,36 +397,57 @@ fprintf('\n=== WandTracking complete ===\n');
 % =========================================================================
 %  HELPER: Detection overview figure
 % =========================================================================
-function generateDetectionOverview(detections, camDirs, frameSets, nCams, nFrames, resultsDir)
-    % Pick up to 8 evenly spaced frames valid across all cameras
-    validFrames = [];
-    for f = 1:nFrames
-        allValid = all(arrayfun(@(c) detections{c}(f).valid, 1:nCams));
-        if allValid, validFrames(end+1) = f; end %#ok<AGROW>
-    end
-    if isempty(validFrames), return; end
+function generateDetectionOverview(detections, camDirs, frameSets, nCams, nFrames, resultsDir, startFrame)
+    % Show 5 evenly-spaced valid frames for each camera independently.
+    % Red circle = Large (bright) LED, green circle = Small (dim) LED.
+    nSamples = 5;
 
-    pick = round(linspace(1, numel(validFrames), min(8, numel(validFrames))));
-    pick = validFrames(pick);
+    fig = figure('Visible','off', 'Position', [0 0 1800 1000]);
 
-    fig = figure('Visible','off','Position',[0 0 1600 900]);
-    nPick = numel(pick);
-    for fi = 1:nPick
-        f  = pick(fi);
-        im = imread(fullfile(camDirs{1}, frameSets{1}{f}));
-        if size(im,3)==3, im = rgb2gray(im); end
-        ax = subplot(2, ceil(nPick/2), fi);
-        imagesc(im,'Parent',ax); colormap(ax,gray); axis(ax,'image','off');
-        hold(ax,'on');
-        det = detections{1}(f);
-        if det.valid
-            plot(ax, det.pts(1,1), det.pts(1,2), 'r+', 'MarkerSize',12,'LineWidth',2);  % Large
-            plot(ax, det.pts(2,1), det.pts(2,2), 'g+', 'MarkerSize',12,'LineWidth',2);  % Small
+    for c = 1:nCams
+        validIdx = find([detections{c}.valid]);
+        if isempty(validIdx), continue; end
+
+        pickIdx = round(linspace(1, numel(validIdx), min(nSamples, numel(validIdx))));
+        pick    = validIdx(pickIdx);
+
+        for fi = 1:numel(pick)
+            f  = pick(fi);
+            im = imread(fullfile(camDirs{c}, frameSets{c}{f}));
+            if size(im,3)==3, im = rgb2gray(im); end
+
+            % Stretch contrast so dark images are visible
+            im_disp = im;
+            hi = prctile(double(im_disp(:)), 99.5);
+            if hi > 0, im_disp = uint8(double(im_disp) * (255/hi)); end
+
+            ax = subplot(nCams, nSamples, (c-1)*nSamples + fi);
+            imagesc(im_disp, 'Parent', ax);
+            colormap(ax, gray); caxis(ax, [0 255]);
+            axis(ax, 'image', 'off');
+            hold(ax, 'on');
+
+            det = detections{c}(f);
+            % Large LED — red circle
+            plot(ax, det.pts(1,1), det.pts(1,2), 'ro', ...
+                'MarkerSize', 14, 'LineWidth', 2);
+            % Small LED — green circle
+            plot(ax, det.pts(2,1), det.pts(2,2), 'go', ...
+                'MarkerSize', 14, 'LineWidth', 2);
+            % Line connecting them
+            plot(ax, det.pts(:,1), det.pts(:,2), 'y-', 'LineWidth', 1.5);
+
+            actualFrame = f + startFrame - 1;
+            if fi == 1
+                title(ax, sprintf('Cam%d  f=%d', c-1, actualFrame), 'FontSize', 7);
+            else
+                title(ax, sprintf('f=%d', actualFrame), 'FontSize', 7);
+            end
+            hold(ax, 'off');
         end
-        title(ax, sprintf('Frame %d', f));
-        hold(ax,'off');
     end
-    sgtitle('Wand Detections — Camera 1 Sample (red=Large, green=Small)');
+
+    sgtitle('Detections per camera  |  red = Large (bright)   green = Small (dim)', 'FontSize', 10);
     saveas(fig, fullfile(resultsDir, 'detection_overview.png'));
     close(fig);
     fprintf('[WandTracking] Detection overview saved.\n');
