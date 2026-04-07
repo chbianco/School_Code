@@ -1,12 +1,4 @@
 % EXTRACT_FRAMES  Extract all frames from a video file into a new folder.
-%
-% USAGE:
-%   Run the script — a file picker will open.
-%
-% OUTPUT:
-%   A folder named after the video file (without extension) is created in
-%   the same directory as the video. Frames are saved as greyscale TIFs
-%   named frame_00001.tif, frame_00002.tif, etc.
 
 % ── Select video file ─────────────────────────────────────────────────────────
 [fname, fpath] = uigetfile( ...

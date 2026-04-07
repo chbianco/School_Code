@@ -49,9 +49,6 @@ else
     error('Unexpected image dimensions: %s', mat2str(size(imgRaw)));
 end
 
-% Derive maxVal from the actual array class, not the raw file bit depth.
-% This correctly handles 24-bit RGB (3x8-bit) files which yield uint8 after
-% channel extraction, as well as true 16-bit greyscale images.
 switch class(imgGray)
     case 'uint8',  maxVal = 255;
     case 'uint16', maxVal = 65535;

@@ -1,4 +1,3 @@
-
 % Load filepath 
 [fname, fpath] = uigetfile( ...
     {'*.tif;*.tiff;*.png;*.bmp;*.jpg;*.jpeg;*.pgm','Image Files';
