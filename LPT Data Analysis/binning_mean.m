@@ -18,7 +18,7 @@ fprintf('Loaded: %d samples x %d tracks (%.2f GB per array)\n', ...
         nT, nTracks, nT*nTracks*8/1e9);
 
 %% Subset: keep only the N longest tracks
-N = 75000;  
+N = nTracks;  
 
 trackLengths = sum(~isnan(x), 1);
 [~, order] = sort(trackLengths, 'descend');
@@ -39,9 +39,12 @@ t = t(1:maxLen);
 fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 
 %% Define bin grid
-gridX = linspace(0,    8*pi, 65);   % 64 bins in x
-gridY = linspace(-1,   1,    33);   % 32 bins in y
+gridX = linspace(0,    8*pi, 64);   % 64 bins in x
 gridZ = linspace(0,    3*pi, 33);   % 32 bins in z
+
+ny_bins = 128; %128 bins in y
+theta = linspace(0, pi, ny_bins + 1);
+gridY = -cos(theta);   %Cluster bins at walls
 
 nx = numel(gridX) - 1;
 ny = numel(gridY) - 1;
@@ -123,12 +126,114 @@ grid on;
 [~, kmid] = min(abs(zc - mean(zc)));
 figure;
 imagesc(xc, yc, squeeze(Umean(:,:,kmid))');
-axis xy equal tight; colorbar;
+axis xy equal tight; 
+c = colorbar;
+c.Label.String = 'u';
+c.Label.FontName = 'Latex';
 xlabel('$x$'); ylabel('$y$');
-title(sprintf('$\\langle u \\rangle$ at $z \\approx %.2f$', zc(kmid)));
+title(sprintf('$\\langle u \\rangle$ at $z = %.2f$', zc(kmid)));
 
 figure;
 imagesc(xc, yc, squeeze(sum(counts,3))');
-axis xy equal tight; colorbar;
+axis xy equal tight; 
+c = colorbar;
+c.Label.String = 'Samples';
+c.Label.FontName = 'Latex';
 xlabel('$x$'); ylabel('$y$');
 title('Samples per $(x,y)$ bin (summed over $z$)');
+
+%% Reynolds Stresses 
+sumUU = zeros(nx, ny, nz);
+sumVV = zeros(nx, ny, nz);
+sumWW = zeros(nx, ny, nz);
+sumUV = zeros(nx, ny, nz);
+sumUW = zeros(nx, ny, nz);
+sumVW = zeros(nx, ny, nz);
+
+fprintf('Reynolds stress pass: %d chunks...\n', nChunks);
+
+for c = 1:nChunks
+    i0 = (c-1)*chunkSize + 1;
+    i1 = min(c*chunkSize, nTracks);
+
+    xc_ = x(:, i0:i1);
+    yc_ = y(:, i0:i1);
+    zc_ = z(:, i0:i1);
+
+    U = diff(xc_, 1, 1) ./ dtCol;
+    V = diff(yc_, 1, 1) ./ dtCol;
+    W = diff(zc_, 1, 1) ./ dtCol;
+
+    Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
+    Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
+    Zm = 0.5 * (zc_(1:end-1,:) + zc_(2:end,:));
+
+    mask = ~isnan(Xm) & ~isnan(Ym) & ~isnan(Zm) & ...
+           ~isnan(U)  & ~isnan(V)  & ~isnan(W);
+
+    xs = Xm(mask);  ys = Ym(mask);  zs = Zm(mask);
+    us = U(mask);   vs = V(mask);   ws = W(mask);
+
+    ix = discretize(xs, gridX);
+    iy = discretize(ys, gridY);
+    iz = discretize(zs, gridZ);
+
+    inDomain = ~isnan(ix) & ~isnan(iy) & ~isnan(iz);
+    ix = ix(inDomain); iy = iy(inDomain); iz = iz(inDomain);
+    us = us(inDomain); vs = vs(inDomain); ws = ws(inDomain);
+
+    if isempty(ix), continue; end
+
+    % Look up mean at each sample's bin via linear indexing
+    lin = sub2ind([nx ny nz], ix, iy, iz);
+    up = us - Umean(lin);
+    vp = vs - Vmean(lin);
+    wp = ws - Wmean(lin);
+
+    subs = [ix, iy, iz];
+    sumUU = sumUU + accumarray(subs, up.*up, [nx ny nz]);
+    sumVV = sumVV + accumarray(subs, vp.*vp, [nx ny nz]);
+    sumWW = sumWW + accumarray(subs, wp.*wp, [nx ny nz]);
+    sumUV = sumUV + accumarray(subs, up.*vp, [nx ny nz]);
+    sumUW = sumUW + accumarray(subs, up.*wp, [nx ny nz]);
+    sumVW = sumVW + accumarray(subs, vp.*wp, [nx ny nz]);
+
+    fprintf('  chunk %d/%d done\n', c, nChunks);
+end
+
+% Normalize
+uu = sumUU ./ counts;
+vv = sumVV ./ counts;
+ww = sumWW ./ counts;
+uv = sumUV ./ counts;
+uw = sumUW ./ counts;
+vw = sumVW ./ counts;
+
+% Turbulent kinetic energy
+tke = 0.5 * (uu + vv + ww);
+
+%% Reynolds stress plots
+uu_prof = squeeze(mean(uu, [1 3], 'omitnan'));
+vv_prof = squeeze(mean(vv, [1 3], 'omitnan'));
+ww_prof = squeeze(mean(ww, [1 3], 'omitnan'));
+uv_prof = squeeze(mean(uv, [1 3], 'omitnan'));
+tke_prof = squeeze(mean(tke, [1 3], 'omitnan'));
+
+figure;
+hold on;
+plot(yc, uu_prof);
+plot(yc, vv_prof);
+plot(yc, ww_prof);
+plot(yc, uv_prof);
+xlabel('$y$'); ylabel('Reynolds stress');
+legend({'$\overline{u''u''}$','$\overline{v''v''}$','$\overline{w''w''}$','$\overline{u''v''}$'}, ...
+       'Location','best');
+title('Reynolds stress profiles');
+grid on;
+hold off;
+
+figure;
+plot(yc, tke_prof);
+xlabel('$y$'); ylabel('$k = \frac{1}{2}\overline{u_i'' u_i''}$');
+title('Turbulent kinetic energy profile');
+grid on;
