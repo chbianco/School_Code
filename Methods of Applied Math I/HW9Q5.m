@@ -92,7 +92,7 @@ title('Rank-2 Approximation A_2'); caxis([min(A(:)) max(A(:))]);
 
 subplot(2,3,4);
 semilogy(singular_values, 'o-', 'LineWidth', 1.5, 'MarkerSize', 8);
-xlabel('Index k'); ylabel('\sigma_k (log scale)');
+xlabel('Index k'); ylabel('$\sigma_k$ (log scale)');
 title('Singular Value Spectrum'); grid on;
 
 subplot(2,3,5);
