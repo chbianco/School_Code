@@ -432,4 +432,120 @@ end
 n_times = 20; 
 times = linspace(0.5, 25, n_times);
 
+sumU_dns  = zeros(ny_dns, 1);
+sumV_dns  = zeros(ny_dns, 1);
+sumW_dns  = zeros(ny_dns, 1);
+sumUU_dns = zeros(ny_dns, 1);
+sumVV_dns = zeros(ny_dns, 1);
+sumWW_dns = zeros(ny_dns, 1);
+sumUV_dns = zeros(ny_dns, 1);
+n_samples = zeros(ny_dns, 1);
 
+fprintf('Querying JHTDB: %d times x %d points = %d total queries...\n', ...
+        n_times, n_points, n_times);
+
+for it = 1:n_times
+    t_query = times(it);
+    fprintf('  time %d/%d (t = %.2f)...', it, n_times, t_query);
+
+    vel = getData(authkey, dataset, variable, t_query, ...
+                  temporal_method, spatial_method, spatial_operator, points);
+
+    % vel is (n_points x 3): columns are u, v, w
+    % Reshape to (nx_dns x ny_dns x nz_dns x 3)
+    u_snap = reshape(vel(:,1), [nz_dns, ny_dns, nx_dns]);
+    v_snap = reshape(vel(:,2), [nz_dns, ny_dns, nx_dns]);
+    w_snap = reshape(vel(:,3), [nz_dns, ny_dns, nx_dns]);
+
+    % Average over x and z dimensions for this snapshot
+    u_prof = squeeze(mean(u_snap, [1 3]));   % (ny_dns x 1)
+    v_prof = squeeze(mean(v_snap, [1 3]));
+    w_prof = squeeze(mean(w_snap, [1 3]));
+
+    % Accumulate first moments
+    sumU_dns = sumU_dns + u_prof;
+    sumV_dns = sumV_dns + v_prof;
+    sumW_dns = sumW_dns + w_prof;
+
+    % Accumulate second moments (per-point, then average over x,z)
+    uu_prof = squeeze(mean(u_snap.^2, [1 3]));
+    vv_prof_snap = squeeze(mean(v_snap.^2, [1 3]));
+    ww_prof_snap = squeeze(mean(w_snap.^2, [1 3]));
+    uv_prof_snap = squeeze(mean(u_snap .* v_snap, [1 3]));
+
+    sumUU_dns = sumUU_dns + uu_prof;
+    sumVV_dns = sumVV_dns + vv_prof_snap;
+    sumWW_dns = sumWW_dns + ww_prof_snap;
+    sumUV_dns = sumUV_dns + uv_prof_snap;
+
+    n_samples = n_samples + 1;
+
+    fprintf(' done\n');
+end
+
+%Compute DNS statistics
+Umean_dns = sumU_dns ./ n_samples;
+Vmean_dns = sumV_dns ./ n_samples;
+Wmean_dns = sumW_dns ./ n_samples;
+
+% Reynolds stresses: <u'u'> = <uu> - <u>^2
+uu_dns = sumUU_dns ./ n_samples - Umean_dns.^2;
+vv_dns = sumVV_dns ./ n_samples - Vmean_dns.^2;
+ww_dns = sumWW_dns ./ n_samples - Wmean_dns.^2;
+uv_dns = sumUV_dns ./ n_samples - Umean_dns .* Vmean_dns;
+
+yc_dns = gridY_dns(:);
+
+%% Comparison plots
+% ---- Mean velocity ----
+figure;
+plot(yc, Uprofile, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, Umean_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\langle u \rangle$');
+legend({'LPT', 'DNS'}, 'Location', 'best');
+title('Mean streamwise velocity');
+grid on;
+
+% ---- Reynolds stresses ----
+figure;
+tiledlayout(2, 2);
+
+nexttile;
+plot(yc, uu_prof, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, uu_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{u''u''}$');
+legend({'LPT', 'DNS'}, 'Location', 'best'); grid on;
+
+nexttile;
+plot(yc, vv_prof, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, vv_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{v''v''}$');
+grid on;
+
+nexttile;
+plot(yc, ww_prof, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, ww_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{w''w''}$');
+grid on;
+
+nexttile;
+plot(yc, uv_prof, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, uv_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{u''v''}$');
+grid on;
+
+% ---- TKE ----
+tke_dns = 0.5 * (uu_dns + vv_dns + ww_dns);
+
+figure;
+plot(yc, tke_prof, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, tke_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); ylabel('$k$');
+legend({'LPT', 'DNS'}, 'Location', 'best');
+title('Turbulent kinetic energy');
+grid on;
+
+fprintf('\nDNS comparison complete.\n');
+fprintf('DNS: u_tau = 0.0499, nu = 5e-5, Re_tau ~ 1000\n');
+fprintf('DNS samples: %d times x %d (x,z) points = %d per y-location\n', ...
+        n_times, nx_dns*nz_dns, n_times*nx_dns*nz_dns);
