@@ -39,10 +39,10 @@ t = t(1:maxLen);
 fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 
 %% Define bin grid
-gridX = linspace(0,    8*pi, 64);   % 64 bins in x
-gridZ = linspace(0,    3*pi, 33);   % 32 bins in z
+gridX = linspace(0,    8*pi, 129);   % 64 bins in x
+gridZ = linspace(0,    3*pi, 65);   % 32 bins in z
 
-ny_bins = 128; %128 bins in y
+ny_bins = 256; %128 bins in y
 theta = linspace(0, pi, ny_bins + 1);
 gridY = -cos(theta);   %Cluster bins at walls
 
@@ -289,28 +289,147 @@ xlabel('$y$'); ylabel('$\overline{u''v''}$ vs $\langle \tilde u \tilde v \rangle
 title('$uv$'); grid on;
 
 figure;
-semilogy(yc, abs(uu_disp), 'DisplayName', '$|\langle\tilde u \tilde u\rangle|$'); hold on;
-semilogy(yc, abs(vv_disp), 'DisplayName', '$|\langle\tilde v \tilde v\rangle|$');
-semilogy(yc, abs(ww_disp), 'DisplayName', '$|\langle\tilde w \tilde w\rangle|$');
-semilogy(yc, abs(uv_disp), 'DisplayName', '$|\langle\tilde u \tilde v\rangle|$');
+plot(yc, uu_disp, 'DisplayName', '$|\langle\tilde u \tilde u\rangle|$'); hold on;
+plot(yc, vv_disp, 'DisplayName', '$|\langle\tilde v \tilde v\rangle|$');
+plot(yc, ww_disp, 'DisplayName', '$|\langle\tilde w \tilde w\rangle|$');
+plot(yc, uv_disp, 'DisplayName', '$|\langle\tilde u \tilde v\rangle|$');
 xlabel('$y$'); ylabel('Dispersive flux (abs)');
 title('Dispersive flux magnitudes (log scale)');
 legend('Interpreter','latex','Location','best'); grid on;
 
-%% Testing/comparison
+%% Pressure Poisson
 
-[~, iy_mid] = min(abs(yc - 0));    % centerline
-[~, iy_near] = min(abs(yc - 0.9)); % near wall
+%Velocity correlation tensors
+Tuu = Umean.*Umean + uu;
+Tvv = Vmean.*Vmean + vv;
+Tww = Wmean.*Wmean + ww;
+Tuv = Umean.*Vmean + uv;
+Tuw = Umean.*Wmean + uw;
+Tvw = Vmean.*Wmean + vw;
+
+%For any empty bins, use zero (near wall)
+Tuu(isnan(Tuu)) = 0; Tvv(isnan(Tvv)) = 0; Tww(isnan(Tww)) = 0;
+Tuv(isnan(Tuv)) = 0; Tuw(isnan(Tuw)) = 0; Tvw(isnan(Tvw)) = 0;
+
+%Wavenumbers for (x,z) directions
+Lx = gridX(end) - gridX(1);
+Ly = gridY(end) - gridY(1);
+Lz = gridZ(end) - gridZ(1);
+
+kx_vec = 2*pi/Lx * [0:floor(nx/2), -floor(nx/2)+1:-1]';
+ky_vec = 2*pi/Ly * [0:floor(ny/2), -floor(ny/2)+1:-1]';
+kz_vec = 2*pi/Lz * [0:floor(nz/2), -floor(nz/2)+1:-1]';
+
+fprintf('Wavenumber vectors: kx(%d), ky(%d), kz(%d)\n', ...
+        length(kx_vec), length(ky_vec), length(kz_vec));
+
+% Source term
+Tuu_h = fftn(Tuu);
+Tvv_h = fftn(Tvv);
+Tww_h = fftn(Tww);
+Tuv_h = fftn(Tuv);
+Tuw_h = fftn(Tuw);
+Tvw_h = fftn(Tvw);
+
+KX = reshape(kx_vec, [nx, 1,  1 ]);
+KY = reshape(ky_vec, [1,  ny, 1 ]);
+KZ = reshape(kz_vec, [1,  1,  nz]);
+
+S_hat =   (KX.^2)       .* Tuu_h ...
+        + (KY.^2)       .* Tvv_h ...
+        + (KZ.^2)       .* Tww_h ...
+        + 2*(KX.*KY)    .* Tuv_h ...
+        + 2*(KX.*KZ)    .* Tuw_h ...
+        + 2*(KY.*KZ)    .* Tvw_h;
+
+K2 = KX.^2 + KY.^2 + KZ.^2;
+K2(K2 < 1e-16) = Inf;
+
+P_hat = -S_hat ./ K2;
+
+
+%Inv FFT
+Pmean = real(ifftn(P_hat));
+
+% Check that imaginary part is negligible
+imag_residual = max(abs(imag(ifftn(P_hat))), [], 'all');
+fprintf('Max imaginary residual: %.2e (should be ~1e-14)\n', imag_residual);
+
+%% Pressure Plots
+%Plane averaged pressure
+P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
 
 figure;
-subplot(1,2,1);
-imagesc(xc, zc, squeeze(U_tilde(:, iy_mid, :))');
-axis xy equal tight; colorbar;
-xlabel('$x$'); ylabel('$z$');
-title(sprintf('$\\tilde u$ at $y = %.2f$ (centerline)', yc(iy_mid)));
+plot(yc, P_prof, 'LineWidth', 2); hold on;
+plot(yc, -vv_prof, 'LineWidth', 2);
+plot(yc, P_prof + vv_prof, 'k--', 'LineWidth', 2);
+xlabel('$y$');
+legend({'$\bar{p}(y)$', '$-\overline{v''v''}(y)$', ...
+        '$\bar{p} + \overline{v''v''}$ (should be const)'}, ...
+       'Location', 'best');
+title('Mean pressure profile from Poisson solve');
+grid on;
 
-subplot(1,2,2);
-imagesc(xc, zc, squeeze(U_tilde(:, iy_near, :))');
-axis xy equal tight; colorbar;
-xlabel('$x$'); ylabel('$z$');
-title(sprintf('$\\tilde u$ at $y = %.2f$ (near wall)', yc(iy_near)));
+% Spurious (x,z) variation — should be near zero for channel flow
+P_std_xz = squeeze(std(Pmean, 0, [1 3]));
+figure;
+semilogy(yc, P_std_xz, 'LineWidth', 2);
+xlabel('$y$'); ylabel('std of $\bar{p}$ over $(x,z)$');
+title('Spurious $(x,z)$ variation (should be near zero)');
+grid on;
+
+% Mid-z slice of pressure field
+[~, kmid] = min(abs(zc - mean(zc)));
+figure;
+imagesc(xc, yc, squeeze(Pmean(:,:,kmid))');
+axis xy equal tight;
+c = colorbar;
+c.Label.String = '$\bar{p}$';
+c.Label.Interpreter = 'latex';
+xlabel('$x$'); ylabel('$y$');
+title(sprintf('$\\bar{p}(x,y)$ at $z \\approx %.2f$', zc(kmid)));
+
+%% Validate velocity 
+% token
+authkey = 'edu.jhu.pha.turbulence.testing-201406';  
+% dataset (channel flow re_tau ~ 1000)
+dataset =  'channel';
+% variable of interest
+variable = 'velocity';
+% temporal interpolation
+temporal_method = 'pchip'; 
+% spatial interpolation
+spatial_method = 'lag4';
+% spatial data capture
+spatial_operator  = 'field';
+
+%Points per query 
+ny_dns = 64;
+nz_dns = 8;
+nx_dns = 8;
+
+
+theta_dns = linspace(0, pi, ny_dns);
+gridY_dns = -cos(theta_dns); 
+
+gridX_dns = linspace(2, 8*pi - 2, nx_dns);   % avoid edges
+gridZ_dns = linspace(0.5, 3*pi - 0.5, nz_dns);
+
+n_points = nx_dns * ny_dns * nz_dns;
+points = zeros(n_points, 3);
+idx = 0;
+for i = 1:nx_dns
+    for j = 1:ny_dns
+        for k = 1:nz_dns
+            idx = idx + 1;
+            points(idx, 1) = gridX_dns(i);
+            points(idx, 2) = gridY_dns(j);
+            points(idx, 3) = gridZ_dns(k);
+        end
+    end
+end
+
+n_times = 20; 
+times = linspace(0.5, 25, n_times);
+
+
