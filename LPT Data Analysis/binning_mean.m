@@ -349,13 +349,8 @@ P_hat = -S_hat ./ K2;
 P_hat_mean = 0;
 P_hat(1,1) = P_hat_mean;
 
-
 %Inv FFT
 Pmean = real(ifftn(P_hat));
-
-% Check that imaginary part is negligible
-imag_residual = max(abs(imag(ifftn(P_hat))), [], 'all');
-fprintf('Max imaginary residual: %.2e (should be ~1e-14)\n', imag_residual);
 
 %% Pressure Plots
 %Plane averaged pressure
