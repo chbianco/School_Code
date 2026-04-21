@@ -72,7 +72,7 @@ snap_idx_RK4  = 2;
 
 for step = 1:nsteps_RK4
     t_RK4 = step * dt_RK4;
-    k1 = rhs_central(u_RK4,              c, alpha, dx, N);
+    k1 = rhs_central(u_RK4, c, alpha, dx, N);
     k2 = rhs_central(u_RK4 + dt_RK4/2*k1, c, alpha, dx, N);
     k3 = rhs_central(u_RK4 + dt_RK4/2*k2, c, alpha, dx, N);
     k4 = rhs_central(u_RK4 + dt_RK4*k3,   c, alpha, dx, N);
