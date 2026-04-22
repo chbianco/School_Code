@@ -25,7 +25,7 @@ dy = y(2) - y(1);
 X = X'; Y = Y';
 
 %% Source term and exact steady state
-Q      = 2*(2 - X.^2 - Y.^2);
+Q  = 2*(2 - X.^2 - Y.^2);
 phi_ss = (X.^2 - 1) .* (Y.^2 - 1);
 
 %% Initial condition
@@ -96,22 +96,21 @@ err = max(max(abs(phi - phi_ss)));
 fprintf('Max error at t=1 vs exact steady state: %.4e\n', err);
 fprintf('(~%.2f%% relative error)\n', err / max(max(abs(phi_ss))) * 100);
 
-%% Reproduce Figure 5.9
+%% Plotting
 figure('Position', [100 100 1200 380]);
 for k = 1:3
     subplot(1, 3, k);
     surf(X, Y, snapshots{k}, 'EdgeColor', 'none');
-    xlabel('x'); ylabel('y'); zlabel('\phi');
+    xlabel('x'); ylabel('y'); zlabel('$\phi$');
     title(snap_labels{k}, 'FontSize', 13);
     xlim([-1 1]); ylim([-1 1]); zlim([0 1.05]);
     colormap(parula);
     view([-35 25]);
     box on; grid on;
 end
-sgtitle(sprintf('2D Heat Equation - Approximate Factorization (CN-ADI)\nM = N = %d,  dt = %.2f', M, dt), ...
-    'FontSize', 12);
 
-%% Large dt convergence study (demonstrates unconditional stability)
+
+%% Large dt convergence
 fprintf('\nConvergence study with large time steps (dt = 1.0):\n');
 dt_big   = 1.0;
 rx2      = dt_big / (2*dx^2);

@@ -104,6 +104,6 @@ title('Exact Solution'); colorbar;
 figure(2);
 contourf(XX, YY, abs(U - U_exact), 20);
 xlabel('x'); ylabel('y');
-title('Pointwise Error |u_{FD} - u_{exact}|'); colorbar;
+title('Pointwise Error $|u_{FD} - u_{exact}|$'); colorbar;
 
 fprintf('Max error: %.6f\n', max(abs(U(:) - U_exact(:))));
