@@ -38,354 +38,7 @@ t = t(1:maxLen);
 [nT, nTracks] = size(x);
 fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 
-%% Define bin grid
-gridX = linspace(0,    8*pi, 129);   % 128 bins in x
-gridZ = linspace(0,    3*pi, 65);   % 64 bins in z
-
-ny_bins = 256; %256 bins in y
-theta = linspace(0, pi, ny_bins + 1);
-gridY = -cos(theta);   %Cluster bins at walls
-
-nx = numel(gridX) - 1;
-ny = numel(gridY) - 1;
-nz = numel(gridZ) - 1;
-
-%% Chunked binning: accumulate sums over track chunks
-counts = zeros(nx, ny, nz);
-sumU   = zeros(nx, ny, nz);
-sumV   = zeros(nx, ny, nz);
-sumW   = zeros(nx, ny, nz);
-
-chunkSize = 1000;   % tracks per chunk; tune for memory
-dtCol = diff(t(:));
-
-nChunks = ceil(nTracks / chunkSize);
-fprintf('Processing %d chunks of up to %d tracks...\n', nChunks, chunkSize);
-
-for c = 1:nChunks
-    i0 = (c-1)*chunkSize + 1;
-    i1 = min(c*chunkSize, nTracks);
-
-    xc_ = x(:, i0:i1);
-    yc_ = y(:, i0:i1);
-    zc_ = z(:, i0:i1);
-
-    % Forward differences -> velocities at midpoints
-    U = diff(xc_, 1, 1) ./ dtCol;
-    V = diff(yc_, 1, 1) ./ dtCol;
-    W = diff(zc_, 1, 1) ./ dtCol;
-
-    Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
-    Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
-    Zm = 0.5 * (zc_(1:end-1,:) + zc_(2:end,:));
-
-    mask = ~isnan(Xm) & ~isnan(Ym) & ~isnan(Zm) & ...
-           ~isnan(U)  & ~isnan(V)  & ~isnan(W);
-
-    xs = Xm(mask);  ys = Ym(mask);  zs = Zm(mask);
-    us = U(mask);   vs = V(mask);   ws = W(mask);
-
-    % Bin lookup
-    ix = discretize(xs, gridX);
-    iy = discretize(ys, gridY);
-    iz = discretize(zs, gridZ);
-
-    inDomain = ~isnan(ix) & ~isnan(iy) & ~isnan(iz);
-    ix = ix(inDomain); iy = iy(inDomain); iz = iz(inDomain);
-    us = us(inDomain); vs = vs(inDomain); ws = ws(inDomain);
-
-    if isempty(ix), continue; end
-
-    subs = [ix, iy, iz];
-    counts = counts + accumarray(subs, 1,  [nx ny nz]);
-    sumU   = sumU   + accumarray(subs, us, [nx ny nz]);
-    sumV   = sumV   + accumarray(subs, vs, [nx ny nz]);
-    sumW   = sumW   + accumarray(subs, ws, [nx ny nz]);
-
-    fprintf('  chunk %d/%d done\n', c, nChunks);
-end
-
-Umean = sumU ./ counts;   % NaN where counts==0
-Vmean = sumV ./ counts;
-Wmean = sumW ./ counts;
-
-fprintf('Total samples binned: %d\n', sum(counts(:)));
-
-%% Visualization
-xc = 0.5*(gridX(1:end-1) + gridX(2:end));
-yc = 0.5*(gridY(1:end-1) + gridY(2:end));
-zc = 0.5*(gridZ(1:end-1) + gridZ(2:end));
-
-Uprofile = squeeze(mean(Umean, [1 3], 'omitnan'));
-figure;
-plot(yc, Uprofile);
-xlabel('$y$'); ylabel('$\langle u \rangle$');
-title('Mean streamwise velocity profile');
-grid on;
-
-[~, kmid] = min(abs(zc - mean(zc)));
-figure;
-imagesc(xc, yc, squeeze(Umean(:,:,kmid))');
-axis xy equal tight; 
-c = colorbar;
-c.Label.String = 'u';
-c.Label.FontName = 'Latex';
-xlabel('$x$'); ylabel('$y$');
-title(sprintf('$\\langle u \\rangle$ at $z = %.2f$', zc(kmid)));
-
-figure;
-imagesc(xc, yc, squeeze(sum(counts,3))');
-axis xy equal tight; 
-c = colorbar;
-c.Label.String = 'Samples';
-c.Label.FontName = 'Latex';
-xlabel('$x$'); ylabel('$y$');
-title('Samples per $(x,y)$ bin (summed over $z$)');
-
-%% Reynolds Stresses 
-sumUU = zeros(nx, ny, nz);
-sumVV = zeros(nx, ny, nz);
-sumWW = zeros(nx, ny, nz);
-sumUV = zeros(nx, ny, nz);
-sumUW = zeros(nx, ny, nz);
-sumVW = zeros(nx, ny, nz);
-
-fprintf('Reynolds stress pass: %d chunks...\n', nChunks);
-
-for c = 1:nChunks
-    i0 = (c-1)*chunkSize + 1;
-    i1 = min(c*chunkSize, nTracks);
-
-    xc_ = x(:, i0:i1);
-    yc_ = y(:, i0:i1);
-    zc_ = z(:, i0:i1);
-
-    U = diff(xc_, 1, 1) ./ dtCol;
-    V = diff(yc_, 1, 1) ./ dtCol;
-    W = diff(zc_, 1, 1) ./ dtCol;
-
-    Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
-    Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
-    Zm = 0.5 * (zc_(1:end-1,:) + zc_(2:end,:));
-
-    mask = ~isnan(Xm) & ~isnan(Ym) & ~isnan(Zm) & ...
-           ~isnan(U)  & ~isnan(V)  & ~isnan(W);
-
-    xs = Xm(mask);  ys = Ym(mask);  zs = Zm(mask);
-    us = U(mask);   vs = V(mask);   ws = W(mask);
-
-    ix = discretize(xs, gridX);
-    iy = discretize(ys, gridY);
-    iz = discretize(zs, gridZ);
-
-    inDomain = ~isnan(ix) & ~isnan(iy) & ~isnan(iz);
-    ix = ix(inDomain); iy = iy(inDomain); iz = iz(inDomain);
-    us = us(inDomain); vs = vs(inDomain); ws = ws(inDomain);
-
-    if isempty(ix), continue; end
-
-    % Look up mean at each sample's bin via linear indexing
-    lin = sub2ind([nx ny nz], ix, iy, iz);
-    up = us - Umean(lin);
-    vp = vs - Vmean(lin);
-    wp = ws - Wmean(lin);
-
-    subs = [ix, iy, iz];
-    sumUU = sumUU + accumarray(subs, up.*up, [nx ny nz]);
-    sumVV = sumVV + accumarray(subs, vp.*vp, [nx ny nz]);
-    sumWW = sumWW + accumarray(subs, wp.*wp, [nx ny nz]);
-    sumUV = sumUV + accumarray(subs, up.*vp, [nx ny nz]);
-    sumUW = sumUW + accumarray(subs, up.*wp, [nx ny nz]);
-    sumVW = sumVW + accumarray(subs, vp.*wp, [nx ny nz]);
-
-    fprintf('  chunk %d/%d done\n', c, nChunks);
-end
-
-% Normalize
-uu = sumUU ./ counts;
-vv = sumVV ./ counts;
-ww = sumWW ./ counts;
-uv = sumUV ./ counts;
-uw = sumUW ./ counts;
-vw = sumVW ./ counts;
-
-% Turbulent kinetic energy
-tke = 0.5 * (uu + vv + ww);
-
-%% Reynolds stress plots
-uu_prof = squeeze(mean(uu, [1 3], 'omitnan'));
-vv_prof = squeeze(mean(vv, [1 3], 'omitnan'));
-ww_prof = squeeze(mean(ww, [1 3], 'omitnan'));
-uv_prof = squeeze(mean(uv, [1 3], 'omitnan'));
-tke_prof = squeeze(mean(tke, [1 3], 'omitnan'));
-
-figure;
-hold on;
-plot(yc, uu_prof);
-plot(yc, vv_prof);
-plot(yc, ww_prof);
-plot(yc, uv_prof);
-xlabel('$y$'); ylabel('Reynolds stress');
-legend({'$\overline{u''u''}$','$\overline{v''v''}$','$\overline{w''w''}$','$\overline{u''v''}$'}, ...
-       'Location','best');
-title('Reynolds stress profiles');
-grid on;
-hold off;
-
-figure;
-plot(yc, tke_prof);
-xlabel('$y$'); ylabel('$k = \frac{1}{2}\overline{u_i'' u_i''}$');
-title('Turbulent kinetic energy profile');
-grid on;
-
-%% Dispersive fluxes 
-
-% Step 1: plane-averaged means (1D profiles in y)
-U_plane = squeeze(mean(Umean, [1 3], 'omitnan'));   % ny x 1
-V_plane = squeeze(mean(Vmean, [1 3], 'omitnan'));
-W_plane = squeeze(mean(Wmean, [1 3], 'omitnan'));
-
-% Step 2: spatial deviations of the time-mean field
-% Broadcast the 1D profile back to 3D shape and subtract.
-U_tilde = Umean - reshape(U_plane, [1 ny 1]);
-V_tilde = Vmean - reshape(V_plane, [1 ny 1]);
-W_tilde = Wmean - reshape(W_plane, [1 ny 1]);
-
-% Step 3: dispersive flux components at each y (plane average of products)
-uu_disp = squeeze(mean(U_tilde .* U_tilde, [1 3], 'omitnan'));
-vv_disp = squeeze(mean(V_tilde .* V_tilde, [1 3], 'omitnan'));
-ww_disp = squeeze(mean(W_tilde .* W_tilde, [1 3], 'omitnan'));
-uv_disp = squeeze(mean(U_tilde .* V_tilde, [1 3], 'omitnan'));
-uw_disp = squeeze(mean(U_tilde .* W_tilde, [1 3], 'omitnan'));
-vw_disp = squeeze(mean(V_tilde .* W_tilde, [1 3], 'omitnan'));
-
-%% Dispersive fluxes vs Reynolds stresses
-figure;
-tiledlayout(2, 2);
-
-nexttile;
-plot(yc, uu_prof, 'LineWidth', 2); hold on;
-plot(yc, uu_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{u''u''}$ vs $\langle \tilde u \tilde u \rangle$');
-legend({'Reynolds', 'Dispersive'}, 'Location','best');
-title('$uu$'); grid on;
-
-nexttile;
-plot(yc, vv_prof, 'LineWidth', 2); hold on;
-plot(yc, vv_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{v''v''}$ vs $\langle \tilde v \tilde v \rangle$');
-title('$vv$'); grid on;
-
-nexttile;
-plot(yc, ww_prof, 'LineWidth', 2); hold on;
-plot(yc, ww_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{w''w''}$ vs $\langle \tilde w \tilde w \rangle$');
-title('$ww$'); grid on;
-
-nexttile;
-plot(yc, uv_prof, 'LineWidth', 2); hold on;
-plot(yc, uv_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{u''v''}$ vs $\langle \tilde u \tilde v \rangle$');
-title('$uv$'); grid on;
-
-figure;
-plot(yc, uu_disp, 'DisplayName', '$|\langle\tilde u \tilde u\rangle|$'); hold on;
-plot(yc, vv_disp, 'DisplayName', '$|\langle\tilde v \tilde v\rangle|$');
-plot(yc, ww_disp, 'DisplayName', '$|\langle\tilde w \tilde w\rangle|$');
-plot(yc, uv_disp, 'DisplayName', '$|\langle\tilde u \tilde v\rangle|$');
-xlabel('$y$'); ylabel('Dispersive flux (abs)');
-title('Dispersive flux magnitudes (log scale)');
-legend('Interpreter','latex','Location','best'); grid on;
-
-%% Pressure Poisson
-
-%Velocity correlation tensors
-Tuu = Umean.*Umean + uu;
-Tvv = Vmean.*Vmean + vv;
-Tww = Wmean.*Wmean + ww;
-Tuv = Umean.*Vmean + uv;
-Tuw = Umean.*Wmean + uw;
-Tvw = Vmean.*Wmean + vw;
-
-%For any empty bins, use zero (near wall)
-Tuu(isnan(Tuu)) = 0; Tvv(isnan(Tvv)) = 0; Tww(isnan(Tww)) = 0;
-Tuv(isnan(Tuv)) = 0; Tuw(isnan(Tuw)) = 0; Tvw(isnan(Tvw)) = 0;
-
-%Wavenumbers for (x,z) directions
-Lx = gridX(end) - gridX(1);
-Ly = gridY(end) - gridY(1);
-Lz = gridZ(end) - gridZ(1);
-
-kx_vec = 2*pi/Lx * [0:floor(nx/2), -floor(nx/2)+1:-1]';
-ky_vec = 2*pi/Ly * [0:floor(ny/2), -floor(ny/2)+1:-1]';
-kz_vec = 2*pi/Lz * [0:floor(nz/2), -floor(nz/2)+1:-1]';
-
-fprintf('Wavenumber vectors: kx(%d), ky(%d), kz(%d)\n', ...
-        length(kx_vec), length(ky_vec), length(kz_vec));
-
-% Source term
-Tuu_h = fftn(Tuu);
-Tvv_h = fftn(Tvv);
-Tww_h = fftn(Tww);
-Tuv_h = fftn(Tuv);
-Tuw_h = fftn(Tuw);
-Tvw_h = fftn(Tvw);
-
-KX = reshape(kx_vec, [nx, 1,  1 ]);
-KY = reshape(ky_vec, [1,  ny, 1 ]);
-KZ = reshape(kz_vec, [1,  1,  nz]);
-
-S_hat =   (KX.^2)       .* Tuu_h ...
-        + (KY.^2)       .* Tvv_h ...
-        + (KZ.^2)       .* Tww_h ...
-        + 2*(KX.*KY)    .* Tuv_h ...
-        + 2*(KX.*KZ)    .* Tuw_h ...
-        + 2*(KY.*KZ)    .* Tvw_h;
-
-K2 = KX.^2 + KY.^2 + KZ.^2;
-K2(K2 < 1e-16) = Inf;
-
-P_hat = -S_hat ./ K2;
-P_hat_mean = 0;
-P_hat(1,1) = P_hat_mean;
-
-%Inv FFT
-Pmean = real(ifftn(P_hat));
-
-%% Pressure Plots
-%Plane averaged pressure
-P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
-
-figure;
-plot(yc, P_prof, 'LineWidth', 2); hold on;
-plot(yc, -vv_prof, 'LineWidth', 2);
-plot(yc, P_prof + vv_prof, 'k--', 'LineWidth', 2);
-xlabel('$y$');
-legend({'$\bar{p}(y)$', '$-\overline{v''v''}(y)$', ...
-        '$\bar{p} + \overline{v''v''}$ (should be const)'}, ...
-       'Location', 'best');
-title('Mean pressure profile from Poisson solve');
-grid on;
-
-% Spurious (x,z) variation — should be near zero for channel flow
-P_std_xz = squeeze(std(Pmean, 0, [1 3]));
-figure;
-semilogy(yc, P_std_xz, 'LineWidth', 2);
-xlabel('$y$'); ylabel('std of $\bar{p}$ over $(x,z)$');
-title('Spurious $(x,z)$ variation (should be near zero)');
-grid on;
-
-% Mid-z slice of pressure field
-[~, kmid] = min(abs(zc - mean(zc)));
-figure;
-imagesc(xc, yc, squeeze(Pmean(:,:,kmid))');
-axis xy equal tight;
-c = colorbar;
-c.Label.String = '$\bar{p}$';
-c.Label.Interpreter = 'latex';
-xlabel('$x$'); ylabel('$y$');
-title(sprintf('$\\bar{p}(x,y)$ at $z \\approx %.2f$', zc(kmid)));
-
+%% ------------GET JHU DATA-------------
 %% Validate velocity 
 authkey = 'edu.jhu.pha.turbulence.testing-201406';
 dataset = 'channel';
@@ -487,7 +140,7 @@ for it = 1:n_times
     fprintf(' done\n');
 end
 
-%% Compute DNS statistics
+%Compute DNS statistics
 Umean_dns = sumU_dns / n_samples;
 Vmean_dns = sumV_dns / n_samples;
 Wmean_dns = sumW_dns / n_samples;
@@ -504,56 +157,6 @@ fprintf('\nDNS statistics computed.\n');
 fprintf('y-points: %d, samples per y-location: %d\n', ny_dns, n_samples);
 fprintf('Total queries: %d\n', n_times * n_ytiles);
 
-%% Comparison plots
-Uprofile_lpt = squeeze(mean(Umean, [1 3], 'omitnan'));
-uu_lpt = squeeze(mean(uu, [1 3], 'omitnan'));
-vv_lpt = squeeze(mean(vv, [1 3], 'omitnan'));
-ww_lpt = squeeze(mean(ww, [1 3], 'omitnan'));
-uv_lpt = squeeze(mean(uv, [1 3], 'omitnan'));
-tke_lpt = 0.5 * (uu_lpt + vv_lpt + ww_lpt);
-
-figure;
-plot(yc, Uprofile_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, Umean_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\langle u \rangle$');
-legend({'LPT', 'DNS'}, 'Location', 'best');
-title('Mean streamwise velocity');
-grid on;
-
-figure;
-tiledlayout(2, 2);
-
-nexttile;
-plot(yc, uu_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, uu_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); title('$\overline{u''u''}$');
-legend({'LPT', 'DNS'}, 'Location', 'best'); grid on;
-
-nexttile;
-plot(yc, vv_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, vv_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); title('$\overline{v''v''}$');
-grid on;
-
-nexttile;
-plot(yc, ww_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, ww_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); title('$\overline{w''w''}$');
-grid on;
-
-nexttile;
-plot(yc, uv_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, uv_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); title('$\overline{u''v''}$');
-grid on;
-
-figure;
-plot(yc, tke_lpt, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, tke_dns, 'r--', 'LineWidth', 2);
-xlabel('$y$'); ylabel('$k$');
-legend({'LPT', 'DNS'}, 'Location', 'best');
-title('Turbulent kinetic energy');
-grid on;
 
 %% Validate pressure 
 authkey = 'edu.jhu.pha.turbulence.testing-201406';
@@ -626,6 +229,429 @@ Pmean_dns = Pmean_dns - Pmean_dns(ic_dns);
 
 fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 
+
+%% -----------TRACK DATA------------------
+
+%% Sweep across bin sizes
+Xbin_vec = [64];
+Ybin_vec = [32];
+Zbin_vec = [128];
+
+for bn = 1:length(Xbin_vec)
+
+%Define bin grid
+gridX = linspace(0,    8*pi, Xbin_vec(bn) + 1);
+gridZ = linspace(0,    3*pi, Zbin_vec(bn) + 1);
+
+ny_bins = Ybin_vec(bn);
+theta = linspace(0, pi, ny_bins + 1);
+gridY = -cos(theta);   %Cluster bins at walls
+
+nx = numel(gridX) - 1;
+ny = numel(gridY) - 1;
+nz = numel(gridZ) - 1;
+
+%Chunked binning: accumulate sums over track chunks
+counts = zeros(nx, ny, nz);
+sumU   = zeros(nx, ny, nz);
+sumV   = zeros(nx, ny, nz);
+sumW   = zeros(nx, ny, nz);
+
+chunkSize = 1000;   % tracks per chunk; tune for memory
+dtCol = diff(t(:));
+
+nChunks = ceil(nTracks / chunkSize);
+fprintf('Processing %d chunks of up to %d tracks...\n', nChunks, chunkSize);
+
+for c = 1:nChunks
+    i0 = (c-1)*chunkSize + 1;
+    i1 = min(c*chunkSize, nTracks);
+
+    xc_ = x(:, i0:i1);
+    yc_ = y(:, i0:i1);
+    zc_ = z(:, i0:i1);
+
+    % Forward differences -> velocities at midpoints
+    U = diff(xc_, 1, 1) ./ dtCol;
+    V = diff(yc_, 1, 1) ./ dtCol;
+    W = diff(zc_, 1, 1) ./ dtCol;
+
+    Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
+    Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
+    Zm = 0.5 * (zc_(1:end-1,:) + zc_(2:end,:));
+
+    mask = ~isnan(Xm) & ~isnan(Ym) & ~isnan(Zm) & ...
+           ~isnan(U)  & ~isnan(V)  & ~isnan(W);
+
+    xs = Xm(mask);  ys = Ym(mask);  zs = Zm(mask);
+    us = U(mask);   vs = V(mask);   ws = W(mask);
+
+    % Bin lookup
+    ix = discretize(xs, gridX);
+    iy = discretize(ys, gridY);
+    iz = discretize(zs, gridZ);
+
+    inDomain = ~isnan(ix) & ~isnan(iy) & ~isnan(iz);
+    ix = ix(inDomain); iy = iy(inDomain); iz = iz(inDomain);
+    us = us(inDomain); vs = vs(inDomain); ws = ws(inDomain);
+
+    if isempty(ix), continue; end
+
+    subs = [ix, iy, iz];
+    counts = counts + accumarray(subs, 1,  [nx ny nz]);
+    sumU   = sumU   + accumarray(subs, us, [nx ny nz]);
+    sumV   = sumV   + accumarray(subs, vs, [nx ny nz]);
+    sumW   = sumW   + accumarray(subs, ws, [nx ny nz]);
+
+    fprintf('  chunk %d/%d done\n', c, nChunks);
+end
+
+Umean = sumU ./ counts;   % NaN where counts==0
+Vmean = sumV ./ counts;
+Wmean = sumW ./ counts;
+
+fprintf('Total samples binned: %d\n', sum(counts(:)));
+
+
+%Bin Reynolds Stresses 
+sumUU = zeros(nx, ny, nz);
+sumVV = zeros(nx, ny, nz);
+sumWW = zeros(nx, ny, nz);
+sumUV = zeros(nx, ny, nz);
+sumUW = zeros(nx, ny, nz);
+sumVW = zeros(nx, ny, nz);
+
+fprintf('Reynolds stress pass: %d chunks...\n', nChunks);
+
+for c = 1:nChunks
+    i0 = (c-1)*chunkSize + 1;
+    i1 = min(c*chunkSize, nTracks);
+
+    xc_ = x(:, i0:i1);
+    yc_ = y(:, i0:i1);
+    zc_ = z(:, i0:i1);
+
+    U = diff(xc_, 1, 1) ./ dtCol;
+    V = diff(yc_, 1, 1) ./ dtCol;
+    W = diff(zc_, 1, 1) ./ dtCol;
+
+    Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
+    Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
+    Zm = 0.5 * (zc_(1:end-1,:) + zc_(2:end,:));
+
+    mask = ~isnan(Xm) & ~isnan(Ym) & ~isnan(Zm) & ...
+           ~isnan(U)  & ~isnan(V)  & ~isnan(W);
+
+    xs = Xm(mask);  ys = Ym(mask);  zs = Zm(mask);
+    us = U(mask);   vs = V(mask);   ws = W(mask);
+
+    ix = discretize(xs, gridX);
+    iy = discretize(ys, gridY);
+    iz = discretize(zs, gridZ);
+
+    inDomain = ~isnan(ix) & ~isnan(iy) & ~isnan(iz);
+    ix = ix(inDomain); iy = iy(inDomain); iz = iz(inDomain);
+    us = us(inDomain); vs = vs(inDomain); ws = ws(inDomain);
+
+    if isempty(ix), continue; end
+
+    % Look up mean at each sample's bin via linear indexing
+    lin = sub2ind([nx ny nz], ix, iy, iz);
+    up = us - Umean(lin);
+    vp = vs - Vmean(lin);
+    wp = ws - Wmean(lin);
+
+    subs = [ix, iy, iz];
+    sumUU = sumUU + accumarray(subs, up.*up, [nx ny nz]);
+    sumVV = sumVV + accumarray(subs, vp.*vp, [nx ny nz]);
+    sumWW = sumWW + accumarray(subs, wp.*wp, [nx ny nz]);
+    sumUV = sumUV + accumarray(subs, up.*vp, [nx ny nz]);
+    sumUW = sumUW + accumarray(subs, up.*wp, [nx ny nz]);
+    sumVW = sumVW + accumarray(subs, vp.*wp, [nx ny nz]);
+
+    fprintf('  chunk %d/%d done\n', c, nChunks);
+end
+
+% Normalize
+uu = sumUU ./ counts;
+vv = sumVV ./ counts;
+ww = sumWW ./ counts;
+uv = sumUV ./ counts;
+uw = sumUW ./ counts;
+vw = sumVW ./ counts;
+
+% Turbulent kinetic energy
+tke = 0.5 * (uu + vv + ww);
+
+%Binned Dispersive fluxes 
+
+% Step 1: plane-averaged means (1D profiles in y)
+U_plane = squeeze(mean(Umean, [1 3], 'omitnan'));   % ny x 1
+V_plane = squeeze(mean(Vmean, [1 3], 'omitnan'));
+W_plane = squeeze(mean(Wmean, [1 3], 'omitnan'));
+
+% Step 2: spatial deviations of the time-mean field
+% Broadcast the 1D profile back to 3D shape and subtract.
+U_tilde = Umean - reshape(U_plane, [1 ny 1]);
+V_tilde = Vmean - reshape(V_plane, [1 ny 1]);
+W_tilde = Wmean - reshape(W_plane, [1 ny 1]);
+
+% Step 3: dispersive flux components at each y (plane average of products)
+uu_disp = squeeze(mean(U_tilde .* U_tilde, [1 3], 'omitnan'));
+vv_disp = squeeze(mean(V_tilde .* V_tilde, [1 3], 'omitnan'));
+ww_disp = squeeze(mean(W_tilde .* W_tilde, [1 3], 'omitnan'));
+uv_disp = squeeze(mean(U_tilde .* V_tilde, [1 3], 'omitnan'));
+uw_disp = squeeze(mean(U_tilde .* W_tilde, [1 3], 'omitnan'));
+vw_disp = squeeze(mean(V_tilde .* W_tilde, [1 3], 'omitnan'));
+
+
+%Pressure Poisson
+
+%Velocity correlation tensors
+Tuu = Umean.*Umean + uu;
+Tvv = Vmean.*Vmean + vv;
+Tww = Wmean.*Wmean + ww;
+Tuv = Umean.*Vmean + uv;
+Tuw = Umean.*Wmean + uw;
+Tvw = Vmean.*Wmean + vw;
+
+%For any empty bins, use zero (near wall)
+Tuu(isnan(Tuu)) = 0; Tvv(isnan(Tvv)) = 0; Tww(isnan(Tww)) = 0;
+Tuv(isnan(Tuv)) = 0; Tuw(isnan(Tuw)) = 0; Tvw(isnan(Tvw)) = 0;
+
+%Wavenumbers for (x,z) directions
+Lx = gridX(end) - gridX(1);
+Ly = gridY(end) - gridY(1);
+Lz = gridZ(end) - gridZ(1);
+
+kx_vec = 2*pi/Lx * [0:floor(nx/2), -floor(nx/2)+1:-1]';
+ky_vec = 2*pi/Ly * [0:floor(ny/2), -floor(ny/2)+1:-1]';
+kz_vec = 2*pi/Lz * [0:floor(nz/2), -floor(nz/2)+1:-1]';
+
+% Source term
+Tuu_h = fftn(Tuu);
+Tvv_h = fftn(Tvv);
+Tww_h = fftn(Tww);
+Tuv_h = fftn(Tuv);
+Tuw_h = fftn(Tuw);
+Tvw_h = fftn(Tvw);
+
+KX = reshape(kx_vec, [nx, 1,  1 ]);
+KY = reshape(ky_vec, [1,  ny, 1 ]);
+KZ = reshape(kz_vec, [1,  1,  nz]);
+
+S_hat =   (KX.^2)       .* Tuu_h ...
+        + (KY.^2)       .* Tvv_h ...
+        + (KZ.^2)       .* Tww_h ...
+        + 2*(KX.*KY)    .* Tuv_h ...
+        + 2*(KX.*KZ)    .* Tuw_h ...
+        + 2*(KY.*KZ)    .* Tvw_h;
+
+K2 = KX.^2 + KY.^2 + KZ.^2;
+K2(K2 < 1e-16) = Inf;
+
+P_hat = -S_hat ./ K2;
+P_hat_mean = 0;
+P_hat(1,1) = P_hat_mean;
+
+%Inv FFT
+Pmean = real(ifftn(P_hat));
+
+%Errors
+avg_vel_err(bn, :) = squeeze(mean(Umean, [1 3], 'omitnan')) - Umean_dns;
+uu_err(bn, :) = uu_lpt - uu_dns;
+vv_err(bn, :) = vv_lpt - vv_dns;
+ww_err(bn, :) = ww_lpt - ww_dns;
+uv_err(bn, :) = uv_lpt - uv_dns;
+
+pres_err(bn, :) = squeeze(mean(Pmean, [1 3], 'omitnan')) - Pmean_dns;
+
+end
+
+%% -----------PLOTTING BELOW HERE------------------
+
+%% Binning Visualization
+xc = 0.5*(gridX(1:end-1) + gridX(2:end));
+yc = 0.5*(gridY(1:end-1) + gridY(2:end));
+zc = 0.5*(gridZ(1:end-1) + gridZ(2:end));
+
+Uprofile = squeeze(mean(Umean, [1 3], 'omitnan'));
+figure;
+plot(yc, Uprofile);
+xlabel('$y$'); ylabel('$\langle u \rangle$');
+title('Mean streamwise velocity profile');
+grid on;
+
+[~, kmid] = min(abs(zc - mean(zc)));
+figure;
+imagesc(xc, yc, squeeze(Umean(:,:,kmid))');
+axis xy equal tight; 
+c = colorbar;
+c.Label.String = 'u';
+c.Label.FontName = 'Latex';
+xlabel('$x$'); ylabel('$y$');
+title(sprintf('$\\langle u \\rangle$ at $z = %.2f$', zc(kmid)));
+
+figure;
+imagesc(xc, yc, squeeze(sum(counts,3))');
+axis xy equal tight; 
+c = colorbar;
+c.Label.String = 'Samples';
+c.Label.FontName = 'Latex';
+xlabel('$x$'); ylabel('$y$');
+title('Samples per $(x,y)$ bin (summed over $z$)');
+
+%% Binned Reynolds stress plots
+uu_prof = squeeze(mean(uu, [1 3], 'omitnan'));
+vv_prof = squeeze(mean(vv, [1 3], 'omitnan'));
+ww_prof = squeeze(mean(ww, [1 3], 'omitnan'));
+uv_prof = squeeze(mean(uv, [1 3], 'omitnan'));
+tke_prof = squeeze(mean(tke, [1 3], 'omitnan'));
+
+figure;
+hold on;
+plot(yc, uu_prof);
+plot(yc, vv_prof);
+plot(yc, ww_prof);
+plot(yc, uv_prof);
+xlabel('$y$'); ylabel('Reynolds stress');
+legend({'$\overline{u''u''}$','$\overline{v''v''}$','$\overline{w''w''}$','$\overline{u''v''}$'}, ...
+       'Location','best');
+title('Reynolds stress profiles');
+grid on;
+hold off;
+
+figure;
+plot(yc, tke_prof);
+xlabel('$y$'); ylabel('$k = \frac{1}{2}\overline{u_i'' u_i''}$');
+title('Turbulent kinetic energy profile');
+grid on;
+
+%% Dispersive fluxes vs Reynolds stresses plots
+figure;
+tiledlayout(2, 2);
+
+nexttile;
+plot(yc, uu_prof, 'LineWidth', 2); hold on;
+plot(yc, uu_disp, 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\overline{u''u''}$ vs $\langle \tilde u \tilde u \rangle$');
+legend({'Reynolds', 'Dispersive'}, 'Location','best');
+title('$uu$'); grid on;
+
+nexttile;
+plot(yc, vv_prof, 'LineWidth', 2); hold on;
+plot(yc, vv_disp, 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\overline{v''v''}$ vs $\langle \tilde v \tilde v \rangle$');
+title('$vv$'); grid on;
+
+nexttile;
+plot(yc, ww_prof, 'LineWidth', 2); hold on;
+plot(yc, ww_disp, 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\overline{w''w''}$ vs $\langle \tilde w \tilde w \rangle$');
+title('$ww$'); grid on;
+
+nexttile;
+plot(yc, uv_prof, 'LineWidth', 2); hold on;
+plot(yc, uv_disp, 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\overline{u''v''}$ vs $\langle \tilde u \tilde v \rangle$');
+title('$uv$'); grid on;
+
+figure;
+plot(yc, uu_disp, 'DisplayName', '$|\langle\tilde u \tilde u\rangle|$'); hold on;
+plot(yc, vv_disp, 'DisplayName', '$|\langle\tilde v \tilde v\rangle|$');
+plot(yc, ww_disp, 'DisplayName', '$|\langle\tilde w \tilde w\rangle|$');
+plot(yc, uv_disp, 'DisplayName', '$|\langle\tilde u \tilde v\rangle|$');
+xlabel('$y$'); ylabel('Dispersive flux (abs)');
+title('Dispersive flux magnitudes (log scale)');
+legend('Interpreter','latex','Location','best'); grid on;
+
+%% Pressure Plots
+%Plane averaged pressure
+P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
+
+figure;
+plot(yc, P_prof, 'LineWidth', 2); hold on;
+plot(yc, -vv_prof, 'LineWidth', 2);
+plot(yc, P_prof + vv_prof, 'k--', 'LineWidth', 2);
+xlabel('$y$');
+legend({'$\bar{p}(y)$', '$-\overline{v''v''}(y)$', ...
+        '$\bar{p} + \overline{v''v''}$ (should be const)'}, ...
+       'Location', 'best');
+title('Mean pressure profile from Poisson solve');
+grid on;
+
+% Spurious (x,z) variation — should be near zero for channel flow
+P_std_xz = squeeze(std(Pmean, 0, [1 3]));
+figure;
+semilogy(yc, P_std_xz, 'LineWidth', 2);
+xlabel('$y$'); ylabel('std of $\bar{p}$ over $(x,z)$');
+title('Spurious $(x,z)$ variation (should be near zero)');
+grid on;
+
+% Mid-z slice of pressure field
+[~, kmid] = min(abs(zc - mean(zc)));
+figure;
+imagesc(xc, yc, squeeze(Pmean(:,:,kmid))');
+axis xy equal tight;
+c = colorbar;
+c.Label.String = '$\bar{p}$';
+c.Label.Interpreter = 'latex';
+xlabel('$x$'); ylabel('$y$');
+title(sprintf('$\\bar{p}(x,y)$ at $z \\approx %.2f$', zc(kmid)));
+
+%% Velocity comparison plots
+Uprofile_lpt = squeeze(mean(Umean, [1 3], 'omitnan'));
+uu_lpt = squeeze(mean(uu, [1 3], 'omitnan'));
+vv_lpt = squeeze(mean(vv, [1 3], 'omitnan'));
+ww_lpt = squeeze(mean(ww, [1 3], 'omitnan'));
+uv_lpt = squeeze(mean(uv, [1 3], 'omitnan'));
+tke_lpt = 0.5 * (uu_lpt + vv_lpt + ww_lpt);
+
+figure;
+plot(yc, Uprofile_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, Umean_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); ylabel('$\langle u \rangle$');
+legend({'LPT', 'DNS'}, 'Location', 'best');
+title('Mean streamwise velocity');
+grid on;
+
+figure;
+tiledlayout(2, 2);
+
+nexttile;
+plot(yc, uu_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, uu_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{u''u''}$');
+legend({'LPT', 'DNS'}, 'Location', 'best'); grid on;
+
+nexttile;
+plot(yc, vv_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, vv_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{v''v''}$');
+grid on;
+
+nexttile;
+plot(yc, ww_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, ww_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{w''w''}$');
+grid on;
+
+nexttile;
+plot(yc, uv_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, uv_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); title('$\overline{u''v''}$');
+grid on;
+
+figure;
+plot(yc, tke_lpt, 'b-', 'LineWidth', 2); hold on;
+plot(yc_dns, tke_dns, 'r--', 'LineWidth', 2);
+xlabel('$y$'); ylabel('$k$');
+legend({'LPT', 'DNS'}, 'Location', 'best');
+title('Turbulent kinetic energy');
+grid on;
+
+
+
 %% Compare DNS pressure to LPT Poisson pressure
 figure;
 plot(yc, P_prof-1*10^-3, 'b-', 'LineWidth', 2); hold on;
@@ -643,5 +669,8 @@ legend({'DNS: $\bar{p} + \overline{v''v''}$', 'LPT: $\bar{p} + \overline{v''v''}
        'Location', 'best');
 title('$\bar{p} + \overline{v''v''}$');
 grid on;
+
+%% Error plotting
+
 
 
