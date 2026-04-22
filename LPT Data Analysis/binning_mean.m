@@ -233,9 +233,18 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [64];
-Ybin_vec = [32];
-Zbin_vec = [128];
+Xbin_vec = [128, 128, 128, 128, 128];
+Ybin_vec = [32,  64,  128, 256, 512];
+Zbin_vec = [64,  64,  64,  64,  64]; 
+
+%Preallocate bins for largest Ny
+ny_max = max(Ybin_vec);
+err_U  = NaN(length(Ybin_vec), ny_max);
+err_uu = NaN(length(Ybin_vec), ny_max);
+err_vv = NaN(length(Ybin_vec), ny_max);
+err_ww = NaN(length(Ybin_vec), ny_max);
+err_uv = NaN(length(Ybin_vec), ny_max);
+err_P  = NaN(length(Ybin_vec), ny_max);
 
 for bn = 1:length(Xbin_vec)
 
@@ -250,6 +259,10 @@ gridY = -cos(theta);   %Cluster bins at walls
 nx = numel(gridX) - 1;
 ny = numel(gridY) - 1;
 nz = numel(gridZ) - 1;
+
+xc = 0.5*(gridX(1:end-1) + gridX(2:end));
+yc = 0.5*(gridY(1:end-1) + gridY(2:end));
+zc = 0.5*(gridZ(1:end-1) + gridZ(2:end));
 
 %Chunked binning: accumulate sums over track chunks
 counts = zeros(nx, ny, nz);
@@ -457,14 +470,78 @@ P_hat(1,1) = P_hat_mean;
 %Inv FFT
 Pmean = real(ifftn(P_hat));
 
-%Errors
-avg_vel_err(bn, :) = squeeze(mean(Umean, [1 3], 'omitnan')) - Umean_dns;
-uu_err(bn, :) = uu_lpt - uu_dns;
-vv_err(bn, :) = vv_lpt - vv_dns;
-ww_err(bn, :) = ww_lpt - ww_dns;
-uv_err(bn, :) = uv_lpt - uv_dns;
+%Error analysis
+%Interpolate DNS profiles onto the LPT y-grid for this bin resolution
+Umean_dns_interp = interp1(yc_dns, Umean_dns, yc, 'pchip');
+uu_dns_interp = interp1(yc_dns, uu_dns,    yc, 'pchip');
+vv_dns_interp = interp1(yc_dns, vv_dns,    yc, 'pchip');
+ww_dns_interp = interp1(yc_dns, ww_dns,    yc, 'pchip');
+uv_dns_interp = interp1(yc_dns, uv_dns,    yc, 'pchip');
+Pmean_dns_interp = interp1(yc_dns, Pmean_dns, yc, 'pchip');
 
-pres_err(bn, :) = squeeze(mean(Pmean, [1 3], 'omitnan')) - Pmean_dns;
+% LPT profiles for this bin resolution
+Uprofile_lpt = squeeze(mean(Umean, [1 3], 'omitnan'));
+uu_lpt = squeeze(mean(uu, [1 3], 'omitnan'));
+vv_lpt = squeeze(mean(vv, [1 3], 'omitnan'));
+ww_lpt = squeeze(mean(ww, [1 3], 'omitnan'));
+uv_lpt = squeeze(mean(uv, [1 3], 'omitnan'));
+P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
+
+% Subtract centerline pressure
+[~, ic_lpt] = min(abs(yc));
+P_prof = P_prof - P_prof(ic_lpt);
+
+% Force all profiles to column vectors
+Uprofile_lpt = Uprofile_lpt(:);
+uu_lpt = uu_lpt(:); vv_lpt = vv_lpt(:);
+ww_lpt = ww_lpt(:); uv_lpt = uv_lpt(:);
+P_prof = P_prof(:);
+Umean_dns_interp = Umean_dns_interp(:);
+uu_dns_interp = uu_dns_interp(:); vv_dns_interp = vv_dns_interp(:);
+ww_dns_interp = ww_dns_interp(:); uv_dns_interp = uv_dns_interp(:);
+Pmean_dns_interp = Pmean_dns_interp(:);
+
+% Pointwise errors
+err_U(bn, 1:ny)  = (Uprofile_lpt - Umean_dns_interp)';
+err_uu(bn, 1:ny) = (uu_lpt - uu_dns_interp)';
+err_vv(bn, 1:ny) = (vv_lpt - vv_dns_interp)';
+err_ww(bn, 1:ny) = (ww_lpt - ww_dns_interp)';
+err_uv(bn, 1:ny) = (uv_lpt - uv_dns_interp)';
+err_P(bn, 1:ny)  = (P_prof  - Pmean_dns_interp)';
+
+% L2 relative error
+L2_rel = @(lpt, dns) norm(lpt - dns) / norm(dns);
+
+L2_U(bn)  = L2_rel(Uprofile_lpt, Umean_dns_interp);
+L2_uu(bn) = L2_rel(uu_lpt, uu_dns_interp);
+L2_vv(bn) = L2_rel(vv_lpt, vv_dns_interp);
+L2_ww(bn) = L2_rel(ww_lpt, ww_dns_interp);
+L2_uv(bn) = L2_rel(uv_lpt, uv_dns_interp);
+L2_P(bn)  = L2_rel(P_prof,  Pmean_dns_interp);
+
+% Linf relative error
+Linf_rel = @(lpt, dns) max(abs(lpt - dns)) / max(abs(dns));
+
+Linf_U(bn)  = Linf_rel(Uprofile_lpt, Umean_dns_interp);
+Linf_uu(bn) = Linf_rel(uu_lpt, uu_dns_interp);
+Linf_vv(bn) = Linf_rel(vv_lpt, vv_dns_interp);
+Linf_ww(bn) = Linf_rel(ww_lpt, ww_dns_interp);
+Linf_uv(bn) = Linf_rel(uv_lpt, uv_dns_interp);
+Linf_P(bn)  = Linf_rel(P_prof,  Pmean_dns_interp);
+
+% Store bin info for later plotting
+ny_list(bn) = ny;
+dy_mean(bn) = mean(diff(gridY));   % mean bin width in y
+
+fprintf('\n--- Bin resolution %d: nx=%d, ny=%d, nz=%d ---\n', bn, nx, ny, nz);
+fprintf('  L2  errors: U=%.4f, uu=%.4f, vv=%.4f, ww=%.4f, uv=%.4f, P=%.4f\n', ...
+        L2_U(bn), L2_uu(bn), L2_vv(bn), L2_ww(bn), L2_uv(bn), L2_P(bn));
+fprintf('  Linf errors: U=%.4f, uu=%.4f, vv=%.4f, ww=%.4f, uv=%.4f, P=%.4f\n', ...
+        Linf_U(bn), Linf_uu(bn), Linf_vv(bn), Linf_ww(bn), Linf_uv(bn), Linf_P(bn));
+
+counts_y = squeeze(sum(counts, [1 3]));
+min_samples_per_y(bn) = min(counts_y);
+fprintf('  Min samples in any y-bin: %d\n', min_samples_per_y(bn));
 
 end
 
@@ -672,5 +749,46 @@ grid on;
 
 %% Error plotting
 
+if length(Ybin_vec) > 1
+
+    figure;
+    semilogy(ny_list, L2_U,  'o-', 'LineWidth', 2, 'DisplayName', '$\langle u \rangle$'); hold on;
+    semilogy(ny_list, L2_uu, 's-', 'LineWidth', 2, 'DisplayName', '$\overline{u''u''}$');
+    semilogy(ny_list, L2_vv, 'd-', 'LineWidth', 2, 'DisplayName', '$\overline{v''v''}$');
+    semilogy(ny_list, L2_ww, '^-', 'LineWidth', 2, 'DisplayName', '$\overline{w''w''}$');
+    semilogy(ny_list, L2_uv, 'v-', 'LineWidth', 2, 'DisplayName', '$\overline{u''v''}$');
+    semilogy(ny_list, L2_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
+    xlabel('Number of $y$-bins'); ylabel('$L_2$ relative error');
+    legend('Location', 'best');
+    title('Convergence: $L_2$ error vs $y$-resolution');
+    grid on;
+
+    figure;
+    semilogy(ny_list, Linf_U,  'o-', 'LineWidth', 2, 'DisplayName', '$\langle u \rangle$'); hold on;
+    semilogy(ny_list, Linf_uu, 's-', 'LineWidth', 2, 'DisplayName', '$\overline{u''u''}$');
+    semilogy(ny_list, Linf_vv, 'd-', 'LineWidth', 2, 'DisplayName', '$\overline{v''v''}$');
+    semilogy(ny_list, Linf_ww, '^-', 'LineWidth', 2, 'DisplayName', '$\overline{w''w''}$');
+    semilogy(ny_list, Linf_uv, 'v-', 'LineWidth', 2, 'DisplayName', '$\overline{u''v''}$');
+    semilogy(ny_list, Linf_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
+    xlabel('Number of $y$-bins'); ylabel('$L_\infty$ relative error');
+    legend('Location', 'best');
+    title('Convergence: $L_\infty$ error vs $y$-resolution');
+    grid on;
+
+    % Error vs mean bin width (more physical than bin count)
+    figure;
+    loglog(dy_mean, L2_U,  'o-', 'LineWidth', 2, 'DisplayName', '$\langle u \rangle$'); hold on;
+    loglog(dy_mean, L2_uu, 's-', 'LineWidth', 2, 'DisplayName', '$\overline{u''u''}$');
+    loglog(dy_mean, L2_vv, 'd-', 'LineWidth', 2, 'DisplayName', '$\overline{v''v''}$');
+    loglog(dy_mean, L2_ww, '^-', 'LineWidth', 2, 'DisplayName', '$\overline{w''w''}$');
+    loglog(dy_mean, L2_uv, 'v-', 'LineWidth', 2, 'DisplayName', '$\overline{u''v''}$');
+    loglog(dy_mean, L2_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
+    xlabel('Mean $\Delta y$'); ylabel('$L_2$ relative error');
+    legend('Location', 'best');
+    title('Convergence: $L_2$ error vs bin width');
+    grid on;
+    set(gca, 'XDir', 'reverse');   % smaller bins to the right
+
+end
 
 
