@@ -234,9 +234,9 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [128, 128, 128, 128, 128, 128];
-Ybin_vec = [16, 32,  64,  128, 256, 512];
-Zbin_vec = [64, 64,  64,  64,  64,  64]; 
+Xbin_vec = [128];
+Ybin_vec = [32];
+Zbin_vec = [64]; 
 
 %Preallocate bins for largest Ny
 ny_max = max(Ybin_vec);

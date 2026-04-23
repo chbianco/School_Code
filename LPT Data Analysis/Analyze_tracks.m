@@ -7,8 +7,8 @@ set(groot, 'defaultTextInterpreter', 'Latex');
 set(groot, 'defaultLegendInterpreter', 'Latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');
 set(groot, 'defaultLegendInterpreter','latex');
-set(groot, 'defaultTextFontSize', 12);
-set(groot, 'defaultAxesFontSize', 16);
+set(groot, 'defaultTextFontSize', 20);
+set(groot, 'defaultAxesFontSize', 24);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Load Data
@@ -117,9 +117,9 @@ end
 c = colorbar;
 c.Label.String = 'Speed';
 c.Label.FontName = 'Latex';
-xlabel('x(t)')
-ylabel('y(t)')
-zlabel('z(t)')
+xlabel('x')
+ylabel('y')
+zlabel('z')
 xlim([0 8*pi])
 ylim([-1 1])
 zlim([0 3*pi])
