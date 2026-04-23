@@ -1,5 +1,6 @@
 %% Preamble
-close all; clear variables; clc;
+close all; clc;
+clearvars -except tracks t x y z
 set(groot, 'defaultTextInterpreter', 'Latex');
 set(groot, 'defaultLegendInterpreter', 'Latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');
@@ -233,9 +234,9 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [128, 128, 128, 128, 128];
-Ybin_vec = [32,  64,  128, 256, 512];
-Zbin_vec = [64,  64,  64,  64,  64]; 
+Xbin_vec = [128, 128, 128, 128, 128, 128];
+Ybin_vec = [16, 32,  64,  128, 256, 512];
+Zbin_vec = [64, 64,  64,  64,  64,  64]; 
 
 %Preallocate bins for largest Ny
 ny_max = max(Ybin_vec);
@@ -731,7 +732,7 @@ grid on;
 
 %% Compare DNS pressure to LPT Poisson pressure
 figure;
-plot(yc, P_prof-1*10^-3, 'b-', 'LineWidth', 2); hold on;
+plot(yc, P_prof, 'b-', 'LineWidth', 2); hold on;
 plot(yc_dns, Pmean_dns, 'r--', 'LineWidth', 2);
 xlabel('$y$'); ylabel('$\bar{p}(y)$');
 legend({'LPT (Poisson solve)', 'DNS'}, 'Location', 'best');
@@ -740,7 +741,7 @@ grid on;
 
 figure;
 plot(yc_dns, Pmean_dns + vv_dns, 'r--', 'LineWidth', 2); hold on;
-plot(yc, P_prof + vv_lpt- 0.4*10^-3, 'b-', 'LineWidth', 2);
+plot(yc, P_prof + vv_lpt, 'b-', 'LineWidth', 2);
 xlabel('$y$');
 legend({'DNS: $\bar{p} + \overline{v''v''}$', 'LPT: $\bar{p} + \overline{v''v''}$'}, ...
        'Location', 'best');
