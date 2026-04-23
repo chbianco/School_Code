@@ -53,7 +53,7 @@ fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 % Compute R_uu(tau), R_vv(tau), R_ww(tau) from individual track time series.
 
 %Max lag in time steps 
-max_lag = 500;
+max_lag = 1500;
 
 % Accumulators
 Ruu_sum = zeros(max_lag + 1, 1);
@@ -110,7 +110,7 @@ for k = 1:nTracks
     % Note: this is the Lagrangian mean along the track, not the Eulerian bin mean.
     % For homogeneous turbulence they're equivalent; for channel flow there's a
     % subtlety because the particle samples different y-locations over time.
-    %MAY NEED TO CHANGE THIS LATER 
+    % MAY NEED TO CHANGE THIS LATER 
     u_trk = u_trk - mean(u_trk);
     v_trk = v_trk - mean(v_trk);
     w_trk = w_trk - mean(w_trk);
@@ -161,7 +161,7 @@ TL_u = trapz(tau_vec(1:i_zero_u), Ruu(1:i_zero_u));
 TL_v = trapz(tau_vec(1:i_zero_v), Rvv(1:i_zero_v));
 TL_w = trapz(tau_vec(1:i_zero_w), Rww(1:i_zero_w));
 
-% Eddy diffusivities (Taylor's result)
+% Eddy diffusivities
 D_u = Ruu_raw(1) * TL_u;
 D_v = Rvv_raw(1) * TL_v;
 D_w = Rww_raw(1) * TL_w;
