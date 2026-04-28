@@ -50,6 +50,7 @@ zlabel('z(t)')
 xlim([0 8*pi])
 ylim([-1 1])
 zlim([0 3*pi])
+axis equal 
 
 figure
 hold on
@@ -123,6 +124,7 @@ zlabel('z')
 xlim([0 8*pi])
 ylim([-1 1])
 zlim([0 3*pi])
+axis equal
 
 view(3)
 
