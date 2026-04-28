@@ -234,9 +234,9 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [128];
-Ybin_vec = [32];
-Zbin_vec = [64]; 
+Xbin_vec = [128 128 128 128 128 128];
+Ybin_vec = [16 32 64 128 256 512];
+Zbin_vec = [64 64 64 64 64 64]; 
 
 %Preallocate bins for largest Ny
 ny_max = max(Ybin_vec);
@@ -255,7 +255,7 @@ gridZ = linspace(0,    3*pi, Zbin_vec(bn) + 1);
 
 ny_bins = Ybin_vec(bn);
 theta = linspace(0, pi, ny_bins + 1);
-gridY = -cos(theta);   %Cluster bins at walls
+gridY = linspace(-1, 1, Ybin_vec(bn) + 1);   %Cluster bins at walls
 
 nx = numel(gridX) - 1;
 ny = numel(gridY) - 1;
