@@ -235,7 +235,7 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 
 %% Sweep across bin sizes
 Xbin_vec = [128];
-Ybin_vec = [32];
+Ybin_vec = [64];
 Zbin_vec = [64]; 
 
 %Preallocate bins for largest Ny
@@ -465,8 +465,6 @@ K2 = KX.^2 + KY.^2 + KZ.^2;
 K2(K2 < 1e-16) = Inf;
 
 P_hat = -S_hat ./ K2;
-P_hat_mean = 0;
-P_hat(1,1) = P_hat_mean;
 
 %Inv FFT
 Pmean = real(ifftn(P_hat));
