@@ -25,14 +25,14 @@ fig_dir     = 'C:/Users/christopherbianco/Desktop/School_Code/LPT Data Analysis'
 fig_name    = 'all correlations paper.fig'; % figure to modify (.fig file)
 save_name   = 'Fig9.eps'; % name to save .eps version under (include extension)
 
-fsize_axesL = 14; % font size for axes labels [15] <-- example values given in brackets
-fsize_axesT = 12; % font size for axes tick labels [12]
+fsize_axesL = 18; % font size for axes labels [15] <-- example values given in brackets
+fsize_axesT = 14; % font size for axes tick labels [12]
 fsize_title = 14; % font size for plot title [15]
-fsize_leg   = 12; % font size for legend [14]
-linesize    = 1;  % line width [1]
-markersize  = 6; % marker size [6]
+fsize_leg   = 14; % font size for legend [14]
+linesize    = 2;  % line width [1]
+markersize  = 8; % marker size [6]
 resizeFig   = 1; % 1: resize figure according to figsize below; 0: don't resize
-figsize     = [500, 400]; % dimensions for figure (pixels, W x H) [500, 400]
+figsize     = [1000, 900]; % dimensions for figure (pixels, W x H) [500, 400]
 % 1000 width for full-width figures
 % [330, 400] for 3 side-by-side plots (0.32\textwidth in LaTeX)
 % [500, 400] for 2 side-by-side plots (0.48\textwidth in LaTeX)
@@ -94,7 +94,7 @@ set(findall(f1,'-property','MarkerSize'),'MarkerSize',markersize);
 set(findall(f1,'-property','interpreter'),'interpreter','latex');
 leg = findobj(f1, 'Type', 'Legend');
 set(leg, 'fontsize', fsize_leg);
-% set(leg, 'location', 'southeast'); % uncomment to change legend location
+%set(leg, 'location', 'best'); % uncomment to change legend location
 
 if resizeFig
     f1_size = [100, 100, figsize(1), figsize(2)]; % set new dimensions of figure

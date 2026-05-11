@@ -1,6 +1,5 @@
 %% Preamble
-close all; clc;
-clearvars -except tracks t x y z
+close all; clear variables; clc;
 set(groot, 'defaultTextInterpreter', 'Latex');
 set(groot, 'defaultLegendInterpreter', 'Latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');
@@ -235,7 +234,7 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 
 %% Sweep across bin sizes
 Xbin_vec = [128];
-Ybin_vec = [64];
+Ybin_vec = [128];
 Zbin_vec = [64]; 
 
 %Preallocate bins for largest Ny
@@ -255,7 +254,7 @@ gridZ = linspace(0,    3*pi, Zbin_vec(bn) + 1);
 
 ny_bins = Ybin_vec(bn);
 theta = linspace(0, pi, ny_bins + 1);
-gridY = linspace(-1, 1, Ybin_vec(bn) + 1);   %Cluster bins at walls
+gridY = linspace(-1, 1, Ybin_vec(bn) + 1);
 
 nx = numel(gridX) - 1;
 ny = numel(gridY) - 1;
@@ -405,7 +404,6 @@ V_plane = squeeze(mean(Vmean, [1 3], 'omitnan'));
 W_plane = squeeze(mean(Wmean, [1 3], 'omitnan'));
 
 % Step 2: spatial deviations of the time-mean field
-% Broadcast the 1D profile back to 3D shape and subtract.
 U_tilde = Umean - reshape(U_plane, [1 ny 1]);
 V_tilde = Vmean - reshape(V_plane, [1 ny 1]);
 W_tilde = Wmean - reshape(W_plane, [1 ny 1]);
@@ -433,7 +431,7 @@ Tvw = Vmean.*Wmean + vw;
 Tuu(isnan(Tuu)) = 0; Tvv(isnan(Tvv)) = 0; Tww(isnan(Tww)) = 0;
 Tuv(isnan(Tuv)) = 0; Tuw(isnan(Tuw)) = 0; Tvw(isnan(Tvw)) = 0;
 
-%Wavenumbers for (x,z) directions
+%Wavenumbers
 Lx = gridX(end) - gridX(1);
 Ly = gridY(end) - gridY(1);
 Lz = gridZ(end) - gridZ(1);
@@ -472,10 +470,10 @@ Pmean = real(ifftn(P_hat));
 %Error analysis
 %Interpolate DNS profiles onto the LPT y-grid for this bin resolution
 Umean_dns_interp = interp1(yc_dns, Umean_dns, yc, 'pchip');
-uu_dns_interp = interp1(yc_dns, uu_dns,    yc, 'pchip');
-vv_dns_interp = interp1(yc_dns, vv_dns,    yc, 'pchip');
-ww_dns_interp = interp1(yc_dns, ww_dns,    yc, 'pchip');
-uv_dns_interp = interp1(yc_dns, uv_dns,    yc, 'pchip');
+uu_dns_interp    = interp1(yc_dns, uu_dns,    yc, 'pchip');
+vv_dns_interp    = interp1(yc_dns, vv_dns,    yc, 'pchip');
+ww_dns_interp    = interp1(yc_dns, ww_dns,    yc, 'pchip');
+uv_dns_interp    = interp1(yc_dns, uv_dns,    yc, 'pchip');
 Pmean_dns_interp = interp1(yc_dns, Pmean_dns, yc, 'pchip');
 
 % LPT profiles for this bin resolution
@@ -486,9 +484,9 @@ ww_lpt = squeeze(mean(ww, [1 3], 'omitnan'));
 uv_lpt = squeeze(mean(uv, [1 3], 'omitnan'));
 P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
 
-% Subtract centerline pressure
+% Match LPT pressure to DNS at centerline (pressure defined up to a constant)
 [~, ic_lpt] = min(abs(yc));
-P_prof = P_prof - P_prof(ic_lpt);
+P_prof = P_prof - P_prof(ic_lpt) + Pmean_dns_interp(ic_lpt);
 
 % Force all profiles to column vectors
 Uprofile_lpt = Uprofile_lpt(:);
@@ -530,7 +528,7 @@ Linf_P(bn)  = Linf_rel(P_prof,  Pmean_dns_interp);
 
 % Store bin info for later plotting
 ny_list(bn) = ny;
-dy_mean(bn) = mean(diff(gridY));   % mean bin width in y
+dy_mean(bn) = mean(diff(gridY));
 
 fprintf('\n--- Bin resolution %d: nx=%d, ny=%d, nz=%d ---\n', bn, nx, ny, nz);
 fprintf('  L2  errors: U=%.4f, uu=%.4f, vv=%.4f, ww=%.4f, uv=%.4f, P=%.4f\n', ...
@@ -642,27 +640,23 @@ title('Dispersive flux magnitudes (log scale)');
 legend('Interpreter','latex','Location','best'); grid on;
 
 %% Pressure Plots
-%Plane averaged pressure
+% Plane averaged pressure with DNS-matched reference
 P_prof = squeeze(mean(Pmean, [1 3], 'omitnan'));
+Pmean_dns_on_lpt = interp1(yc_dns, Pmean_dns, yc, 'pchip');
+[~, ic] = min(abs(yc));
+P_prof = P_prof - P_prof(ic) + Pmean_dns_on_lpt(ic);
 
-figure;
-plot(yc, P_prof, 'LineWidth', 2); hold on;
-plot(yc, -vv_prof, 'LineWidth', 2);
-plot(yc, P_prof + vv_prof, 'k--', 'LineWidth', 2);
-xlabel('$y$');
-legend({'$\bar{p}(y)$', '$-\overline{v''v''}(y)$', ...
-        '$\bar{p} + \overline{v''v''}$ (should be const)'}, ...
-       'Location', 'best');
-title('Mean pressure profile from Poisson solve');
-grid on;
+% figure;
+% plot(yc, P_prof, 'LineWidth', 2); hold on;
+% plot(yc, -vv_prof, 'LineWidth', 2);
+% plot(yc, P_prof + vv_prof, 'k--', 'LineWidth', 2);
+% xlabel('$y$');
+% legend({'$\bar{p}(y)$', '$-\overline{v''v''}(y)$', ...
+%         '$\bar{p} + \overline{v''v''}$ (should be const)'}, ...
+%        'Location', 'best');
+% title('Mean pressure profile from Poisson solve');
+% grid on;
 
-% Spurious (x,z) variation — should be near zero for channel flow
-P_std_xz = squeeze(std(Pmean, 0, [1 3]));
-figure;
-semilogy(yc, P_std_xz, 'LineWidth', 2);
-xlabel('$y$'); ylabel('std of $\bar{p}$ over $(x,z)$');
-title('Spurious $(x,z)$ variation (should be near zero)');
-grid on;
 
 % Mid-z slice of pressure field
 [~, kmid] = min(abs(zc - mean(zc)));
@@ -726,24 +720,13 @@ legend({'LPT', 'DNS'}, 'Location', 'best');
 title('Turbulent kinetic energy');
 grid on;
 
-
-
 %% Compare DNS pressure to LPT Poisson pressure
 figure;
 plot(yc, P_prof, 'b-', 'LineWidth', 2); hold on;
-plot(yc_dns, Pmean_dns, 'r--', 'LineWidth', 2);
+plot(yc, Pmean_dns_on_lpt, 'r--', 'LineWidth', 2);
 xlabel('$y$'); ylabel('$\bar{p}(y)$');
 legend({'LPT (Poisson solve)', 'DNS'}, 'Location', 'best');
 title('Mean pressure profile');
-grid on;
-
-figure;
-plot(yc_dns, Pmean_dns + vv_dns, 'r--', 'LineWidth', 2); hold on;
-plot(yc, P_prof + vv_lpt, 'b-', 'LineWidth', 2);
-xlabel('$y$');
-legend({'DNS: $\bar{p} + \overline{v''v''}$', 'LPT: $\bar{p} + \overline{v''v''}$'}, ...
-       'Location', 'best');
-title('$\bar{p} + \overline{v''v''}$');
 grid on;
 
 %% Error plotting
@@ -759,7 +742,6 @@ if length(Ybin_vec) > 1
     semilogy(ny_list, L2_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
     xlabel('Number of $y$-bins'); ylabel('$L_2$ relative error');
     legend('Location', 'best');
-    title('Convergence: $L_2$ error vs $y$-resolution');
     grid on;
 
     figure;
@@ -771,10 +753,9 @@ if length(Ybin_vec) > 1
     semilogy(ny_list, Linf_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
     xlabel('Number of $y$-bins'); ylabel('$L_\infty$ relative error');
     legend('Location', 'best');
-    title('Convergence: $L_\infty$ error vs $y$-resolution');
     grid on;
 
-    % Error vs mean bin width (more physical than bin count)
+    % Error vs mean bin width
     figure;
     loglog(dy_mean, L2_U,  'o-', 'LineWidth', 2, 'DisplayName', '$\langle u \rangle$'); hold on;
     loglog(dy_mean, L2_uu, 's-', 'LineWidth', 2, 'DisplayName', '$\overline{u''u''}$');
@@ -782,12 +763,9 @@ if length(Ybin_vec) > 1
     loglog(dy_mean, L2_ww, '^-', 'LineWidth', 2, 'DisplayName', '$\overline{w''w''}$');
     loglog(dy_mean, L2_uv, 'v-', 'LineWidth', 2, 'DisplayName', '$\overline{u''v''}$');
     loglog(dy_mean, L2_P,  'p-', 'LineWidth', 2, 'DisplayName', '$\bar{p}$');
-    xlabel('Mean $\Delta y$'); ylabel('$L_2$ relative error');
+    xlabel('$\Delta y$'); ylabel('$L_2$ relative error');
     legend('Location', 'best');
-    title('Convergence: $L_2$ error vs bin width');
     grid on;
-    set(gca, 'XDir', 'reverse');   % smaller bins to the right
+    set(gca, 'XDir', 'reverse');
 
 end
-
-
