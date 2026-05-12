@@ -53,7 +53,12 @@ ny_tile = 64;
 n_ytiles = ceil(ny_dns / ny_tile);
 
 theta_dns = linspace(0, pi, ny_dns);
-gridY_dns = -cos(theta_dns);
+
+% Staggered grid
+% gridY_dns = -cos(theta_dns); 
+
+%Uniform grid
+gridY_dns = linspace(-1, 1, ny_dns);
 
 % x, z: 8 x 8 = 64 points
 nx_dns = 8;
@@ -233,9 +238,9 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [128];
-Ybin_vec = [128];
-Zbin_vec = [64]; 
+Xbin_vec = [128 128 128 128 128 128];
+Ybin_vec = [16 32 64 128 256 512];
+Zbin_vec = [64 64 64 64 64 64]; 
 
 %Preallocate bins for largest Ny
 ny_max = max(Ybin_vec);
