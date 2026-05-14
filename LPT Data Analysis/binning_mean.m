@@ -238,9 +238,9 @@ fprintf('DNS pressure: %d samples per y-location\n', n_samples_p);
 %% -----------TRACK DATA------------------
 
 %% Sweep across bin sizes
-Xbin_vec = [128 128 128 128 128 128];
-Ybin_vec = [16 32 64 128 256 512];
-Zbin_vec = [64 64 64 64 64 64]; 
+Xbin_vec = [128];
+Ybin_vec = [128];
+Zbin_vec = [64]; 
 
 %Preallocate bins for largest Ny
 ny_max = max(Ybin_vec);
@@ -774,3 +774,49 @@ if length(Ybin_vec) > 1
     set(gca, 'XDir', 'reverse');
 
 end
+
+%% Pressure solver diagnostics
+
+% Source-term spectrum: how much energy at each wavenumber?
+S_power = abs(S_hat).^2;
+S_power_ky = squeeze(sum(S_power, [1 3]));   % collapse x,z -> spectrum in y
+figure;
+semilogy(abs(ky_vec), S_power_ky / max(S_power_ky), 'o-', 'LineWidth', 2);
+xlabel('$|k_y|$'); ylabel('Normalized source power');
+title('Source term spectrum in $y$');
+grid on;
+
+% Pressure spectrum: should decay faster than source (smoothing)
+P_power = abs(P_hat).^2;
+P_power_ky = squeeze(sum(P_power, [1 3]));
+hold on;
+semilogy(abs(ky_vec), P_power_ky / max(P_power_ky), 's-', 'LineWidth', 2);
+legend({'Source $|\hat{S}|^2$', 'Pressure $|\hat{p}|^2$'}, 'Location', 'best');
+
+% Amplification factor per y-mode
+amp_factor = P_power_ky ./ (S_power_ky + 1e-30);   % avoid 0/0
+figure;
+semilogy(abs(ky_vec), amp_factor, 'o-', 'LineWidth', 2);
+xlabel('$|k_y|$'); ylabel('$|\hat{p}|^2 / |\hat{S}|^2$');
+title('Effective amplification per $k_y$ mode');
+grid on;
+
+% Gibbs check: how much does the source jump at the y-boundaries?
+S_physical = l(ifftn(S_hat));
+S_prof = squeeze(mean(S_physical, [1 3]));
+figure;
+plot(yc, S_prof, 'LineWidth', 2);
+xlabel('$y$'); ylabel('$S(y)$');
+title('Plane-averaged source term (check for Gibbs at walls)');
+grid on;
+
+% Relative contribution of each error source
+fprintf('\n=== Pressure solver diagnostics ===\n');
+fprintf('Condition number (K_max/K_min)^2: %.0f\n', ...
+        max(abs(ky_vec))^2 / min(abs(ky_vec(ky_vec ~= 0)))^2);
+fprintf('Max amplification (1/K_min^2): %.1f\n', ...
+        1 / min(abs(ky_vec(ky_vec ~= 0)))^2);
+fprintf('Source RMS: %.2e\n', sqrt(mean(S_prof.^2)));
+fprintf('Pressure RMS: %.2e\n', sqrt(mean(P_prof.^2)));
+fprintf('Ratio (effective amplification): %.1f\n', ...
+        sqrt(mean(P_prof.^2)) / sqrt(mean(S_prof.^2)));

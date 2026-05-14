@@ -32,7 +32,7 @@ fsize_leg   = 14; % font size for legend [14]
 linesize    = 2;  % line width [1]
 markersize  = 8; % marker size [6]
 resizeFig   = 1; % 1: resize figure according to figsize below; 0: don't resize
-figsize     = [600, 600]; % dimensions for figure (pixels, W x H) [500, 400]
+figsize     = [500, 400]; % dimensions for figure (pixels, W x H) [500, 400]
 % 1000 width for full-width figures
 % [330, 400] for 3 side-by-side plots (0.32\textwidth in LaTeX)
 % [500, 400] for 2 side-by-side plots (0.48\textwidth in LaTeX)
