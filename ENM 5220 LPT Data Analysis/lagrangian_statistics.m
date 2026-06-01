@@ -48,7 +48,7 @@ t = t(1:maxLen);
 [nT, nTracks] = size(x);
 fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 
-%% Binning to get Eularian mean velocities 
+%% Binning to get Eulerian mean velocities 
 Xbin_vec = [128];
 Ybin_vec = [32];
 Zbin_vec = [64]; 
