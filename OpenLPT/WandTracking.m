@@ -32,7 +32,7 @@ resultsDir = 'results';       % output folder (must exist)
 
 % --- Camera / frame settings ---
 nCams      = 4;       % number of cameras
-startFrame = 1;     % skip frames before wand appears (set to 1 for no skip)
+startFrame = 16;     % skip frames before wand appears (set to 1 for no skip)
 
 % --- LED detection parameters ---
 detCfg.gaussSigma    = 1.5;   % Gaussian blur sigma (px)
@@ -43,7 +43,7 @@ detCfg.maxArea       = 800;  % max blob area (px²)
 % --- Post-detection filters ---
 minWandPx = 20;   % min wand pixel length (px)
 maxWandPx = 700;   % max wand pixel length (px)
-maxJump   = 150;    % max per-frame displacement for temporal filter (px)
+maxJump   = 200;    % max per-frame displacement for temporal filter (px)
 % --- Per-camera minimum wand length overrides ---
 minWandPxPerCam = containers.Map({1,2,3,4}, {minWandPx, minWandPx, minWandPx, 60});
 
@@ -59,7 +59,7 @@ OUTPUT_CSV = fullfile(resultsDir, 'wand_points.csv');
 % ratio (bright/dim < threshold), the frame is flagged as ambiguous and
 % marked invalid.  Set to 1.0 to disable.
 minBrightnessRatio = 1.05;
-minBrightnessRatioPerCam = containers.Map({1,2,3,4}, {minBrightnessRatio, 1.15, minBrightnessRatio, 1.5});
+minBrightnessRatioPerCam = containers.Map({1,2,3,4}, {minBrightnessRatio, 1.15, minBrightnessRatio, 1.2});
 
 % --- Diagnostics ---
 
