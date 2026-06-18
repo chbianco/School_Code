@@ -9,57 +9,123 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Loading file
-file = 'jhtb_long_LPT.mat'; %Tracks to analyze. 
-%Should be a mat file containing struct LPT with column vectors t, x, y, and z
+file = 'jetTest1.mat'; %Tracks to analyze.
+% This file stores tracks in "long" (row-per-observation) format: a single
+% matrix variable `data`, [nObservations x 19], with columns:
+%   1: track ID (arbitrary integer label, not contiguous)
+%   2: frame number (integer, increases by 1 within a track, no gaps)
+%   3-5: x, y, z position
+%   6-8: u, v, w velocity (already computed in the file)
+%   9-19: additional columns (likely accelerations + per-camera image
+%         coordinates based on typical OpenLPT export layout) - not used
+%         below since the script only needs position; inspect/relabel if
+%         you need them.
+% This is different from the jhtb_long_LPT.mat format this script was
+% originally written for (a struct LPT with t, x, y, z already arranged
+% as nT x nTracks matrices), so the long-format table is unpacked into
+% that same NaN-padded wide layout below.
+
+% Time vector. The file only stores integer frame numbers, not a
+    % physical time/frame-rate, so dt_frame defaults to 1 (t is in units
+    % of "frames"). Set dt_frame to your camera's actual sample interval
+    % (e.g. 1/fps, in seconds) if you want t in physical time units -
+    % all downstream velocity/timescale results scale directly with it.
+    dt_frame = 1/250;
 
 %% Load tracks
-if exist('tracks', 'var') 
+if exist('tracks', 'var') && isfield(tracks, 't')
     t = tracks.t;
     x = tracks.x;
     y = tracks.y;
     z = tracks.z;
     [nT, nTracks] = size(x);
-    fprintf('Track data already loaded')
+    fprintf('Track data already loaded\n')
 else
-    tracks = load(file).LPT;
-    t = tracks.t;
-    x = tracks.x;
-    y = tracks.y;
-    z = tracks.z;
-    [nT, nTracks] = size(x);
-    fprintf('Loaded: %d samples x %d tracks (%.2f GB per array)\n', ...
+    raw = load(file);
+    data = raw.data;          % [trackID, frame, x, y, z, u, v, w, ...]
+
+    trackID = data(:,1);
+    frame   = data(:,2);
+    xPos    = data(:,3);
+    yPos    = data(:,4);
+    zPos    = data(:,5);
+
+    % Map arbitrary track IDs -> contiguous column indices 1..nTracks
+    [~, ~, colIdx] = unique(trackID);
+    nTracks = max(colIdx);
+
+    % Build a shared frame axis spanning every sample; each sample's row
+    % position is its frame number offset from the global minimum frame.
+    frameMin = min(frame);
+    frameMax = max(frame);
+    nT = frameMax - frameMin + 1;
+    rowIdx = frame - frameMin + 1;
+
+    t = (0:nT-1)' * dt_frame;
+
+    % Scatter long-format samples into NaN-padded wide matrices so the
+    % rest of the script (written for nT x nTracks position matrices)
+    % works unchanged.
+    x = NaN(nT, nTracks);
+    y = NaN(nT, nTracks);
+    z = NaN(nT, nTracks);
+
+    linIdx = sub2ind([nT, nTracks], rowIdx, colIdx);
+    x(linIdx) = xPos;
+    y(linIdx) = yPos;
+    z(linIdx) = zPos;
+
+    tracks.t = t; tracks.x = x; tracks.y = y; tracks.z = z;
+
+    fprintf('Loaded: %d samples x %d tracks (%.6f GB per array)\n', ...
         nT, nTracks, nT*nTracks*8/1e9);
 end
 %% User inputs
 %Number of tracks to analyze. Set to nTracks to keep all tracks
 N = nTracks;  
 
-%Number of trajectories to plot
-n = 100;
+%Number of trajectories to plot (clamped - this test set only has nTracks tracks)
+n = min(100, nTracks);
 
 %Bounds of LPT view area, as a 2x1 (ie 0, 20)
-Xlim = [0, 8*pi];
-Ylim = [-1, 1];
-Zlim = [0, 3*pi];
+% Auto-computed from the data with 5% padding, since jetTest1's
+% coordinate range (tens of units, all three axes) has nothing to do with
+% the original periodic-box bounds [0,8pi] x [-1,1] x [0,3pi] used for
+% DNS channel-flow data. Override manually below if you want a fixed
+% window instead (e.g. for comparing multiple datasets on the same axes).
+xLo = min(x(:)); xHi = max(x(:));
+yLo = min(y(:)); yHi = max(y(:));
+zLo = min(z(:)); zHi = max(z(:));
+padFrac = 0.05;
+Xlim = [xLo - padFrac*(xHi-xLo), xHi + padFrac*(xHi-xLo)];
+Ylim = [yLo - padFrac*(yHi-yLo), yHi + padFrac*(yHi-yLo)];
+Zlim = [zLo - padFrac*(zHi-zLo), zHi + padFrac*(zHi-zLo)];
 
 %Number of bins in x, y, and z. Evenly spaced
-Xbin = 128;
-Ybin = 128;
-Zbin = 128;
+% Reduced from 128 -> 10: this test dataset has ~2.7k total samples, so
+% 128^3 bins would leave nearly every bin empty. Scale this back up for a
+% denser dataset (more tracks / longer tracks).
+Xbin = 10;
+Ybin = 10;
+Zbin = 10;
 
 %Tracks per chunk; tune for memory. 1000 works well
 chunkSize = 1000;  
 
 %Max lags for Lagrangian statistics
-max_lag = 2500;
+% Clamped to (longest available track - 1): a lag longer than any track
+% can never have a valid pair, so the original max_lag = 2500 would mean
+% most of Ruu/Rvv/Rww are computed from zero samples (NaN).
+max_lag = min(2500, max(sum(~isnan(x), 1)) - 1);
 
 
 %% Plot n tracks colored by speed
-speed = NaN(4000, n);
+maxTrackLen = max(sum(~isnan(x), 1));  % sized to this dataset, not a fixed 4000
+speed = NaN(maxTrackLen, n);
 
-u_vals = NaN(4000, n); 
-v_vals = NaN(4000, n);
-w_vals = NaN(4000, n);
+u_vals = NaN(maxTrackLen, n); 
+v_vals = NaN(maxTrackLen, n);
+w_vals = NaN(maxTrackLen, n);
 
 figure(1)
 hold on
@@ -100,9 +166,9 @@ c.Label.FontName = 'Latex';
 xlabel('x')
 ylabel('y')
 zlabel('z')
-xlim([0 8*pi])
-ylim([-1 1])
-zlim([0 3*pi])
+xlim(Xlim)
+ylim(Ylim)
+zlim(Zlim)
 axis equal
 
 view(3)
@@ -303,6 +369,21 @@ R_count = zeros(max_lag + 1, 1);   % number of valid pairs per lag
 dt_track = t(2) - t(1);   % assuming uniform time step
 tau_vec = (0:max_lag)' * dt_track;
 
+% U_plane/V_plane/W_plane can contain NaN at y-bins with zero samples
+% (common with sparse data + a fine grid). interp1 with 'pchip' will
+% silently propagate those NaNs across the whole interpolated profile,
+% so the empty bins are dropped here before building the interpolant.
+validProfile = ~isnan(U_plane) & ~isnan(V_plane) & ~isnan(W_plane);
+if nnz(validProfile) < 2
+    error(['Fewer than 2 non-empty y-bins in U_plane/V_plane/W_plane - ', ...
+           'reduce Ybin or widen Ylim so the Eulerian grid actually ', ...
+           'captures samples before running the Lagrangian section.'])
+end
+yc_valid = yc(validProfile);
+U_plane_valid = U_plane(validProfile);
+V_plane_valid = V_plane(validProfile);
+W_plane_valid = W_plane(validProfile);
+
 fprintf('Computing Lagrangian autocorrelation across %d tracks...\n', nTracks);
 
 for k = 1:nTracks
@@ -349,9 +430,9 @@ for k = 1:nTracks
     % Interpolate the plane-averaged mean profile to each track point's y
     % U_plane, V_plane, W_plane are the (ny x 1) plane-averaged profiles
     % computed in the binning section. yc is the bin-center vector.
-    u_mean_local = interp1(yc, Uprofile_lpt, yseg, 'pchip', 'extrap');
-    v_mean_local = interp1(yc, Vprofile_lpt, yseg, 'pchip', 'extrap');
-    w_mean_local = interp1(yc, Wprofile_lpt, yseg, 'pchip', 'extrap');
+    u_mean_local = interp1(yc_valid, U_plane_valid, yseg, 'pchip', 'extrap');
+    v_mean_local = interp1(yc_valid, V_plane_valid, yseg, 'pchip', 'extrap');
+    w_mean_local = interp1(yc_valid, W_plane_valid, yseg, 'pchip', 'extrap');
 
     u_trk = u_trk - u_mean_local;
     v_trk = v_trk - v_mean_local;
@@ -515,26 +596,3 @@ xlabel('$\tau$'); ylabel('$R_{ii}(\tau)$');
 legend({'$R_{uu}$', '$R_{vv}$', '$R_{ww}$'}, 'Location', 'best');
 title('Lagrangian velocity autocorrelation');
 grid on;
-
-% Log-linear to check for exponential decay
-figure;
-semilogy(tau_vec, abs(Ruu), 'LineWidth', 2); hold on;
-semilogy(tau_vec, abs(Rvv), 'LineWidth', 2);
-semilogy(tau_vec, abs(Rww), 'LineWidth', 2);
-xlabel('$\tau$'); ylabel('$|R_{ii}(\tau)|$');
-legend({'$R_{uu}$', '$R_{vv}$', '$R_{ww}$'}, 'Location', 'best');
-title('Lagrangian autocorrelation (log scale)');
-grid on;
-
-% Exponential fit for comparison
-tau_fit = tau_vec(tau_vec < 2*TL_u);
-R_exp_fit = exp(-tau_fit / TL_u);
-figure;
-plot(tau_vec, Ruu, 'b-', 'LineWidth', 2); hold on;
-plot(tau_fit, R_exp_fit, 'r--', 'LineWidth', 2);
-yline(0, 'k--');
-xlabel('$\tau$'); ylabel('$R_{uu}(\tau)$');
-legend({'Data', sprintf('$e^{-\\tau/T_L}$, $T_L = %.3f$', TL_u)}, 'Location', 'best');
-title('Lagrangian $R_{uu}$ with exponential fit');
-grid on;
-
