@@ -9,7 +9,7 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Loading file
-file = 'jetTest1.mat'; %Tracks to analyze.
+file = 'freestream'; %Tracks to analyze.
 % This file stores tracks in "long" (row-per-observation) format: a single
 % matrix variable `data`, [nObservations x 19], with columns:
 %   1: track ID (arbitrary integer label, not contiguous)
@@ -30,7 +30,7 @@ file = 'jetTest1.mat'; %Tracks to analyze.
     % of "frames"). Set dt_frame to your camera's actual sample interval
     % (e.g. 1/fps, in seconds) if you want t in physical time units -
     % all downstream velocity/timescale results scale directly with it.
-    dt_frame = 1/250;
+    dt_frame = 1/400;
 
 %% Load tracks
 if exist('tracks', 'var') && isfield(tracks, 't')
@@ -85,7 +85,7 @@ end
 N = nTracks;  
 
 %Number of trajectories to plot (clamped - this test set only has nTracks tracks)
-n = min(100, nTracks);
+n = min(nTracks, nTracks);
 
 %Bounds of LPT view area, as a 2x1 (ie 0, 20)
 % Auto-computed from the data with 5% padding, since jetTest1's
