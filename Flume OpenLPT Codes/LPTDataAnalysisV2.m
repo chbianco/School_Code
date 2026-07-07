@@ -1,6 +1,6 @@
 %% Preamble
 close all; clc;
-clearvars -except tracks t x y z
+clearvars 
 set(groot, 'defaultTextInterpreter', 'Latex');
 set(groot, 'defaultLegendInterpreter', 'Latex');
 set(groot, 'defaultAxesTickLabelInterpreter','latex');
@@ -15,32 +15,18 @@ file = 'freestream'; %Tracks to analyze.
 %   1: track ID (arbitrary integer label, not contiguous)
 %   2: frame number (integer, increases by 1 within a track, no gaps)
 %   3-5: x, y, z position
-%   6-8: u, v, w velocity (already computed in the file)
+%   6-8: u, v, w velocity
 %   9-19: additional columns (likely accelerations + per-camera image
-%         coordinates based on typical OpenLPT export layout) - not used
-%         below since the script only needs position; inspect/relabel if
-%         you need them.
-% This is different from the jhtb_long_LPT.mat format this script was
-% originally written for (a struct LPT with t, x, y, z already arranged
-% as nT x nTracks matrices), so the long-format table is unpacked into
-% that same NaN-padded wide layout below.
+%         coordinates based on typical OpenLPT export layout)
 
 % Time vector. The file only stores integer frame numbers, not a
     % physical time/frame-rate, so dt_frame defaults to 1 (t is in units
     % of "frames"). Set dt_frame to your camera's actual sample interval
-    % (e.g. 1/fps, in seconds) if you want t in physical time units -
-    % all downstream velocity/timescale results scale directly with it.
+    % (e.g. 1/fps, in seconds) if you want t in physical time units
     dt_frame = 1/400;
 
 %% Load tracks
-if exist('tracks', 'var') && isfield(tracks, 't')
-    t = tracks.t;
-    x = tracks.x;
-    y = tracks.y;
-    z = tracks.z;
-    [nT, nTracks] = size(x);
-    fprintf('Track data already loaded\n')
-else
+
     raw = load(file);
     data = raw.data;          % [trackID, frame, x, y, z, u, v, w, ...]
 
@@ -49,6 +35,10 @@ else
     xPos    = data(:,3);
     yPos    = data(:,4);
     zPos    = data(:,5);
+
+    uVel = data(:,6);
+    vVel = data(:,7);
+    wVel = data(:,8);
 
     % Map arbitrary track IDs -> contiguous column indices 1..nTracks
     [~, ~, colIdx] = unique(trackID);
@@ -70,28 +60,36 @@ else
     y = NaN(nT, nTracks);
     z = NaN(nT, nTracks);
 
+    u = NaN(nT, nTracks);
+    v = NaN(nT, nTracks);
+    w = NaN(nT, nTracks);
+
+
     linIdx = sub2ind([nT, nTracks], rowIdx, colIdx);
     x(linIdx) = xPos;
     y(linIdx) = yPos;
     z(linIdx) = zPos;
 
+    u(linIdx) = uVel;
+    v(linIdx) = vVel;
+    w(linIdx) = wVel;
+
     tracks.t = t; tracks.x = x; tracks.y = y; tracks.z = z;
+    tracks.u = u; tracks.v = v; tracks.w = w;
 
     fprintf('Loaded: %d samples x %d tracks (%.6f GB per array)\n', ...
         nT, nTracks, nT*nTracks*8/1e9);
-end
+
 %% User inputs
 %Number of tracks to analyze. Set to nTracks to keep all tracks
 N = nTracks;  
 
-%Number of trajectories to plot (clamped - this test set only has nTracks tracks)
-n = min(nTracks, nTracks);
+%Number of trajectories to plot (clamped to nTracks)
+n = min(nTracks, 100);
 
 %Bounds of LPT view area, as a 2x1 (ie 0, 20)
-% Auto-computed from the data with 5% padding, since jetTest1's
-% coordinate range (tens of units, all three axes) has nothing to do with
-% the original periodic-box bounds [0,8pi] x [-1,1] x [0,3pi] used for
-% DNS channel-flow data. Override manually below if you want a fixed
+% Auto-computed from the data with 5% padding
+% Override manually below if you want a fixed
 % window instead (e.g. for comparing multiple datasets on the same axes).
 xLo = min(x(:)); xHi = max(x(:));
 yLo = min(y(:)); yHi = max(y(:));
@@ -102,34 +100,37 @@ Ylim = [yLo - padFrac*(yHi-yLo), yHi + padFrac*(yHi-yLo)];
 Zlim = [zLo - padFrac*(zHi-zLo), zHi + padFrac*(zHi-zLo)];
 
 %Number of bins in x, y, and z. Evenly spaced
-% Reduced from 128 -> 10: this test dataset has ~2.7k total samples, so
-% 128^3 bins would leave nearly every bin empty. Scale this back up for a
-% denser dataset (more tracks / longer tracks).
 Xbin = 10;
 Ybin = 10;
 Zbin = 10;
 
-%Tracks per chunk; tune for memory. 1000 works well
+%Tracks per chunk; tune for memory. 1000 works well. Only need for a bunch
+%of tracks
 chunkSize = 1000;  
 
 %Max lags for Lagrangian statistics
-% Clamped to (longest available track - 1): a lag longer than any track
-% can never have a valid pair, so the original max_lag = 2500 would mean
-% most of Ruu/Rvv/Rww are computed from zero samples (NaN).
+%Clamped to (longest available track - 1)
 max_lag = min(2500, max(sum(~isnan(x), 1)) - 1);
+
+%% Sort positions and velocities by track length 
+x_lng = sum(~isnan(x), 1);
+[~, sorted_idx] = sort(x_lng, 'descend');
+
+x = x(:, sorted_idx);
+y = y(:, sorted_idx);
+z = z(:, sorted_idx);
+
+u = u(:, sorted_idx);
+v = v(:, sorted_idx);
+w = w(:, sorted_idx);
 
 
 %% Plot n tracks colored by speed
-maxTrackLen = max(sum(~isnan(x), 1));  % sized to this dataset, not a fixed 4000
+maxTrackLen = max(sum(~isnan(x), 1)); %sized to the dataset
 speed = NaN(maxTrackLen, n);
-
-u_vals = NaN(maxTrackLen, n); 
-v_vals = NaN(maxTrackLen, n);
-w_vals = NaN(maxTrackLen, n);
 
 figure(1)
 hold on
-
 
 for k = 1:n
     xn = rmmissing(x(:,k));
@@ -142,18 +143,12 @@ for k = 1:n
     wn = zeros(1, trk_lng -1);
     t_trk = t(1:trk_lng)';
     
-    %Velocities. CHANGE FOR OPENLPT DATA
-    for j = 1: trk_lng - 1
-        dt = t_trk(j+1) - t_trk(j);
-        un(j) = (xn(j+1) - xn(j))/dt;
-        vn(j) = (yn(j+1) - yn(j))/dt;
-        wn(j) = (zn(j+1) - zn(j))/dt;
-    end
-    u_vals(1:trk_lng-1, k) = un';
-    v_vals(1:trk_lng-1, k) = vn';
-    w_vals(1:trk_lng-1, k) = wn';
+    %Velocities
+    un = rmmissing(u(:,k));
+    vn = rmmissing(v(:,k));
+    wn = rmmissing(w(:,k));
     
-    speed(1:trk_lng-1, k) = sqrt(un.^2 + vn.^2 + wn.^2)';
+    speed(1:trk_lng, k) = sqrt(un'.^2 + vn'.^2 + wn'.^2)';
 
     scatter3(xn(1:end-1),yn(1:end-1),zn(1:end-1), 20, speed(1:trk_lng-1,k), 'filled')
 
