@@ -16,15 +16,17 @@ clear; clc; close all;
 %% ======================= USER PARAMETERS =======================
 
 % --- I/O ---
-outputDir_folder   = 'myProcessed';       % parent folder to write processed frames to
+outputDir_folder   = 'imgFile';       % parent folder to write processed frames to
 filePattern = '*.tif';               % pattern to match input files
 num_cams = 4;   %Number of cameras 
 
 % --- Background subtraction ---
-bgMethod = 'median';   % 'median' | 'mean' | 'min'
+bgMethod = 'median';   % 'median' | 'mean' | 'min' | 'running average'
                         % 'median' is recommended: robust to the tracers
                         % themselves, since any single pixel is only
                         % "hit" by a particle in a small fraction of frames.
+                        %'running average' should be better for moving
+                        % particles
 
 % --- Tracer detection ---
 threshScope  = 'global';   % 'global'   -> one threshold for the whole stack
@@ -34,7 +36,7 @@ threshScope  = 'global';   % 'global'   -> one threshold for the whole stack
 threshMethod = 'meanstd';  % 'meanstd'    -> thresh = mean + threshParam*std
                             % 'percentile' -> thresh = prctile(data,threshParam)
                             % 'absolute'   -> thresh = threshParam (raw intensity)
-threshParam  = 3;          % meaning depends on threshMethod (see above)
+threshParam  = 2.6;          % meaning depends on threshMethod (see above)
 
 minPeakSep     = 2;     % [px] minimum allowed separation between two
                          % detected tracer centers (non-max suppression radius)
@@ -105,7 +107,7 @@ switch outputClass
 end
 
 %% ======================= STEP 1: BACKGROUND =======================
-% Load the full stack (as double, for accurate stats) and compute the
+% Load the full stack (as double) and compute the
 % per-pixel background statistic. Stationary features will subtract to
 % (approximately) zero in every frame.
 
@@ -123,6 +125,13 @@ switch bgMethod
         background = mean(stack, 3);
     case 'min'
         background = min(stack, [], 3);
+    case 'running average'
+        alpha = 0.05; % Learning rate (0 = static background, 1 = instant update)
+        background = stack(:,:,1); % Initialize with first frame
+        for f = 2:size(stack, 3)
+            % Slowly merge the current frame into the background model
+            background = (1 - alpha) * background + alpha * stack(:,:,f);
+        end
     otherwise
         error('Unknown bgMethod: %s', bgMethod);
 end
@@ -183,6 +192,25 @@ end
 if saveCentroids
     save(fullfile(cam_outputDir, 'centroids.mat'), 'allCentroids', 'fileList');
 end
+
+% --- Image list file (e.g. for OpenLPT camera image input) ---
+camFolder      = ['imgFile/',cam,'/'];   % virtual path prefix written into the list
+listNamePrefix = 'img';             % filename prefix
+listNumDigits  = 6;                 % zero-padding width
+listExt        = '.tif';
+imageListFile  = fullfile(outputDir_folder, [cam,'ImageNames.txt']);
+
+fid = fopen(imageListFile, 'w');
+if fid == -1
+    error('Could not open %s for writing.', imageListFile);
+end
+for k = 1:nFrames
+    frameNum  = sprintf('%0*d', listNumDigits, k-1);          % 0, 1, 2, ...
+    frameName = [camFolder, listNamePrefix, frameNum, listExt];
+    fprintf(fid, '%s\n', frameName);
+end
+fclose(fid);
+fprintf('Wrote image list to: %s\n', imageListFile);
 
 fprintf('Done. Output written to: %s\n', cam_outputDir);
 
