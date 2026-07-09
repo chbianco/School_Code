@@ -9,7 +9,7 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Loading file
-file = 'freestream'; %Tracks to analyze.
+file = '07_06_26_freestream_tracks'; %Tracks to analyze.
 % This file stores tracks in "long" (row-per-observation) format: a single
 % matrix variable `data`, [nObservations x 19], with columns:
 %   1: track ID (arbitrary integer label, not contiguous)
@@ -85,7 +85,7 @@ file = 'freestream'; %Tracks to analyze.
 N = nTracks;  
 
 %Number of trajectories to plot (clamped to nTracks)
-n = min(nTracks, 100);
+n = min(nTracks, 200);
 
 %Bounds of LPT view area, as a 2x1 (ie 0, 20)
 % Auto-computed from the data with 5% padding
@@ -100,9 +100,9 @@ Ylim = [yLo - padFrac*(yHi-yLo), yHi + padFrac*(yHi-yLo)];
 Zlim = [zLo - padFrac*(zHi-zLo), zHi + padFrac*(zHi-zLo)];
 
 %Number of bins in x, y, and z. Evenly spaced
-Xbin = 10;
-Ybin = 10;
-Zbin = 10;
+Xbin = 5;
+Ybin = 5;
+Zbin = 5;
 
 %Tracks per chunk; tune for memory. 1000 works well. Only need for a bunch
 %of tracks
@@ -172,18 +172,27 @@ hold off
 
 %% Keep N longest tracks and organize
 trackLengths = sum(~isnan(x), 1);
-[~, order] = sort(trackLengths, 'descend');
-keep = order(1:min(N, nTracks));
+keep = 1:min(N, nTracks);
 
 x = x(:, keep);
 y = y(:, keep);
 z = z(:, keep);
+
+u = u(:, keep);
+v = v(:, keep);
+w = w(:, keep);
+
 
 % Trim rows to longest surviving track
 maxLen = max(sum(~isnan(x), 1));
 x = x(1:maxLen, :);
 y = y(1:maxLen, :);
 z = z(1:maxLen, :);
+
+u = u(1:maxLen, :);
+v = v(1:maxLen, :);
+w = w(1:maxLen, :);
+
 t = t(1:maxLen);
 
 [nT, nTracks] = size(x);
@@ -217,16 +226,15 @@ fprintf('Processing %d chunks of up to %d tracks...\n', nChunks, chunkSize);
 
 for c = 1:nChunks
     i0 = (c-1)*chunkSize + 1;
-    i1 = min(c*chunkSize, nTracks);
+    i1 = min(c*chunkSize, nTracks)-1;
 
     xc_ = x(:, i0:i1);
     yc_ = y(:, i0:i1);
     zc_ = z(:, i0:i1);
 
-    % Forward differences -> velocities at midpoints. CHANGE FOR REAL DATA
-    U = diff(xc_, 1, 1) ./ dtCol;
-    V = diff(yc_, 1, 1) ./ dtCol;
-    W = diff(zc_, 1, 1) ./ dtCol;
+    U = u(1:end-1, i0:i1);
+    V = v(1:end-1, i0:i1);
+    W = w(1:end-1, i0:i1);
 
     Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
     Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
@@ -283,9 +291,9 @@ for c = 1:nChunks
     yc_ = y(:, i0:i1);
     zc_ = z(:, i0:i1);
 
-    U = diff(xc_, 1, 1) ./ dtCol;
-    V = diff(yc_, 1, 1) ./ dtCol;
-    W = diff(zc_, 1, 1) ./ dtCol;
+    U = u(1:end-1, i0:i1);
+    V = v(1:end-1, i0:i1);
+    W = w(1:end-1, i0:i1);
 
     Xm = 0.5 * (xc_(1:end-1,:) + xc_(2:end,:));
     Ym = 0.5 * (yc_(1:end-1,:) + yc_(2:end,:));
@@ -486,18 +494,28 @@ D_v = Rvv_raw(1) * TL_v;
 D_w = Rww_raw(1) * TL_w;
 
 %% ----------------PLOTTING-------------------------------------------
-%% Binning Visualization
+%% Mean velocities
 xc = 0.5*(gridX(1:end-1) + gridX(2:end));
 yc = 0.5*(gridY(1:end-1) + gridY(2:end));
 zc = 0.5*(gridZ(1:end-1) + gridZ(2:end));
 
-Uprofile = squeeze(mean(Umean, [1 3], 'omitnan'));
+%Mean streamwise velocity in y
+Uprofile_y = squeeze(mean(Umean, [1 3], 'omitnan'));
 figure;
-plot(yc, Uprofile);
-xlabel('$y$'); ylabel('$\langle u \rangle$');
+plot(yc, Uprofile_y);
+xlabel('$y$'); ylabel('$\langle \overline{u} \rangle$');
 title('Mean streamwise velocity profile');
 grid on;
 
+%Mean streamwise velocity in z
+Uprofile_z = squeeze(mean(Umean, [1 2], 'omitnan'));
+figure;
+plot(zc, Uprofile_z);
+xlabel('$z$'); ylabel('$\langle \overline{u} \rangle$');
+title('Mean streamwise velocity profile');
+grid on;
+
+%% Binning visualization
 [~, kmid] = min(abs(zc - mean(zc)));
 figure;
 imagesc(xc, yc, squeeze(Umean(:,:,kmid))');
@@ -516,6 +534,15 @@ c.Label.String = 'Samples';
 c.Label.FontName = 'Latex';
 xlabel('$x$'); ylabel('$y$');
 title('Samples per $(x,y)$ bin (summed over $z$)');
+
+figure;
+imagesc(xc, zc, squeeze(sum(counts,2))');
+axis xy tight; 
+c = colorbar;
+c.Label.String = 'Samples';
+c.Label.FontName = 'Latex';
+xlabel('$x$'); ylabel('$z$');
+title('Samples per $(x,z)$ bin (summed over $y$)');
 
 %% Binned Reynolds stress plots
 uu_prof = squeeze(mean(uu, [1 3], 'omitnan'));
