@@ -528,7 +528,7 @@ title(sprintf('$\\langle u \\rangle$ at $z = %.2f$', zc(kmid)));
 
 figure;
 imagesc(xc, yc, squeeze(sum(counts,3))');
-axis xy equal tight; 
+axis xy tight; 
 c = colorbar;
 c.Label.String = 'Samples';
 c.Label.FontName = 'Latex';
