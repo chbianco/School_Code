@@ -50,7 +50,7 @@ nFramesToUse = 20;     % average N over this many evenly spaced frames
 
 % --- Acquisition / calibration ---
 voxelToMm   = 0.27;    % [mm/vox] your reconstruction grid scale
-fps         = 800;     % [1/s] frame rate
+fps         = 600;     % [1/s] frame rate
 U_track     = 0.50;    % [m/s] FASTEST velocity to track (freestream). This
                        % sets the largest per-frame displacement.
 pxToMm      = 0.27;    % [mm/px] object-space size of one IMAGE pixel. Only

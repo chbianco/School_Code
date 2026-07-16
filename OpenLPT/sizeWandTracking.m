@@ -46,7 +46,13 @@ nCams = 4;       % number of cameras
 minRadius = 20;    % min ball radius (px)
 maxRadius = 75;  % max ball radius (px)
 detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly more accurate, but much longer
-edgeThresh = 0.125; %Edge threshold. 0.125 works well. thresholdTester.m can help determine
+% Edge threshold for imfindcircles, ONE VALUE PER CAMERA (cam0, cam1, ...).
+% Lower = more permissive (finds weaker / lower-contrast circles). 0.125 works
+% well as a default; thresholdTester.m can help determine per-camera values.
+% cam1 has a strong illumination gradient + dark background structure, so it
+% needs a lower threshold than the others. A single scalar is also accepted
+% and will be applied to every camera.
+edgeThresh = [0.15, 0.05, 0.10, 0.15];
 
 % --- Post-detection filters ---
 minWandPx = 20;   % min wand pixel length (px)
@@ -95,9 +101,18 @@ if strcmp(detection_method, 'phase')
     method = 'PhaseCode';
 elseif strcmp(detection_method, 'twostage')
     method = 'TwoStage';
-else 
+else
     fprintf('Detection method incorrect')
 end
+
+% Normalise edgeThresh to one value per camera (scalar -> applied to all)
+if isscalar(edgeThresh)
+    edgeThresh = repmat(edgeThresh, 1, nCams);
+elseif numel(edgeThresh) ~= nCams
+    error('edgeThresh must be a scalar or have one value per camera (nCams = %d), but has %d.', ...
+        nCams, numel(edgeThresh));
+end
+
 detections = cell(nCams, 1);
 
 for c = 1:nCams
@@ -107,11 +122,12 @@ fprintf('\nDetecting wand points via Circle Hough Transform (Parallelized)...\n'
 
 % Outer loop over cameras (sequential)
 for c = 1:nCams
-    fprintf('  Processing Camera %d / %d...\n', c - 1, nCams - 1);
-    
+    fprintf('  Processing Camera %d / %d (EdgeThreshold = %.3f)...\n', c - 1, nCams - 1, edgeThresh(c));
+
     % FOR PARFOR: Pull variables into local variables for clean broadcasting/slicing
-    camDir   = camDirs{c};
-    frameSet = frameSets{c};
+    camDir      = camDirs{c};
+    frameSet    = frameSets{c};
+    edgeThreshC = edgeThresh(c);   % this camera's edge threshold
     
     % Create a local, flat struct array that parfor can slice easily
     camDetections = repmat(struct('pts',[],'radii',[],'areas',[],'valid',false,'frame',0, 'metrics', []), nFrames, 1);
@@ -123,8 +139,8 @@ for c = 1:nCams
         if size(im,3)==3, im = mean(im,3); end
         
         % Find dark circles directly using the Image Processing Toolbox
-        [centers, radii, metric] = imfindcircles(im, [20, 90], 'ObjectPolarity', 'dark', ...
-           'Method', method, 'EdgeThreshold', edgeThresh);
+        [centers, radii, metric] = imfindcircles(im, [minRadius, maxRadius], 'ObjectPolarity', 'dark', ...
+           'Method', method, 'EdgeThreshold', edgeThreshC);
         
         % CHECK: If fewer than 2 circles are found, flag as invalid and skip
         if size(centers, 1) < 2

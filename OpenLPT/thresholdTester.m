@@ -7,12 +7,12 @@
 clear; clc; close all;
 
 % --- Configuration ---
-testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_09_26_flumeCalibration\cam2\frame_00374.tif'; % Path to your uploaded test frame
-radiusRange   = [20, 90];
+testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_16_26_flumeCalibration\cam1\frame_00051.tif'; % Path to your uploaded test frame
+radiusRange   = [25, 70];
 methodToTest  = 'TwoStage';        % Swap to 'PhaseCode' to compare methods
 
 % Test a sweep from very permissive (0.03) to aggressive (0.25)
-thresholdsToTest = [0.08, 0.125, 0.15, 0.25];
+thresholdsToTest = [0.03, 0.05, 0.08, 0.125];
 
 % --- Image Preparation ---
 if ~exist(testImagePath, 'file')
