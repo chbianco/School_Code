@@ -44,7 +44,7 @@ nCams = 4;       % number of cameras
 
 % --- LED detection parameters ---
 minRadius = 20;    % min ball radius (px)
-maxRadius = 90;  % max ball radius (px)
+maxRadius = 75;  % max ball radius (px)
 detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly more accurate, but much longer
 edgeThresh = 0.125; %Edge threshold. 0.125 works well. thresholdTester.m can help determine
 

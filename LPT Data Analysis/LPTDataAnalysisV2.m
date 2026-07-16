@@ -9,7 +9,17 @@ set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
 %% Loading file
-file = '07_06_26_freestream_tracks'; %Tracks to analyze.
+[file, path] = uigetfile('*.*', 'Select a File');
+
+% Check if the user cancelled the dialog
+if isequal(file, 0)
+    disp('Aborting');
+else
+    % Create the full path to the file
+    fullPath = fullfile(path, file);
+    fprintf('Selected: %s\n', fullPath);
+end
+file = fullPath; %Tracks to analyze.
 % This file stores tracks in "long" (row-per-observation) format: a single
 % matrix variable `data`, [nObservations x 19], with columns:
 %   1: track ID (arbitrary integer label, not contiguous)
