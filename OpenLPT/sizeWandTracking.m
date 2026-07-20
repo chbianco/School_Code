@@ -52,7 +52,7 @@ detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly 
 % cam1 has a strong illumination gradient + dark background structure, so it
 % needs a lower threshold than the others. A single scalar is also accepted
 % and will be applied to every camera.
-edgeThresh = [0.15, 0.05, 0.10, 0.15];
+edgeThresh = [0.15, 0.08, 0.12, 0.15];
 
 % --- Post-detection filters ---
 minWandPx = 50;   % min wand pixel length (px)
