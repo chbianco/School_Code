@@ -20,7 +20,7 @@ else
     fprintf('Selected: %s\n', fullPath);
 end
 file = fullPath; %Tracks to analyze.
-% This file stores tracks in "long" (row-per-observation) format: a single
+% OpenLPT stores tracks in "long" (row-per-observation) format: a single
 % matrix variable `data`, [nObservations x 19], with columns:
 %   1:    track ID (arbitrary integer label, not contiguous)
 %   2:    frame number (integer, increases by 1 within a track, no gaps)
@@ -29,18 +29,10 @@ file = fullPath; %Tracks to analyze.
 %   9-11: a_x, a_y, a_z acceleration [mm/s^2]
 %   12-19: per-camera image coordinates [px] (4 cameras x 2)
 %
-% ---------------------------- UNITS -------------------------------------
-% The FILE stores positions in mm and velocities in mm/s. On load they are
-% converted to SI (see mm2m below), so every quantity in this script is SI:
-%   length      x,y,z            : m
-%   velocity    u,v,w            : m/s
-%   Reynolds stress / TKE        : m^2/s^2
-%   lag / integral timescale     : s
-%   eddy diffusivity D           : m^2/s
 % IMPORTANT: the velocities in cols 6-8 are ALREADY physical (mm/s). OpenLPT
 % computes them as a finite difference of the mm positions using the
-% camera sample rate, so the frame rate is already baked in (verified:
-% stored u == diff(x)*fps). dt_frame below MUST equal that same rate (1/fps)
+% camera sample rate, so the frame rate is already baked in
+% dt_frame below MUST equal that same rate (1/fps)
 % so that the time axis `t`, the re-derived Lagrangian velocities, and the
 % file velocities are all mutually consistent.
 % ------------------------------------------------------------------------
@@ -421,12 +413,21 @@ W_plane_valid = W_plane(validProfile);
 fprintf('Computing Lagrangian autocorrelation across %d tracks...\n', nTracks);
 
 for k = 1:nTracks
-    % Extract this track's positions, remove NaNs
+    % Extract this track's positions and OpenLPT velocities, remove NaNs
     xk = x(:, k);
     yk = y(:, k);
     zk = z(:, k);
 
-    valid = ~isnan(xk) & ~isnan(yk) & ~isnan(zk);
+    % Velocities come straight from OpenLPT (data cols 6-8, converted to
+    % m/s on load). This script NEVER finite-differences positions to get
+    % velocity -- OpenLPT's fitted velocities are less noisy, especially in
+    % the poorly-resolved depth (w) direction.
+    uk = u(:, k);
+    vk = v(:, k);
+    wk = w(:, k);
+
+    valid = ~isnan(xk) & ~isnan(yk) & ~isnan(zk) & ...
+            ~isnan(uk) & ~isnan(vk) & ~isnan(wk);
     idx_valid = find(valid);
 
     if length(idx_valid) < 10
@@ -450,15 +451,13 @@ for k = 1:nTracks
         continue
     end
 
-    % Velocity via central differences. CHANGE FOR OPENLPT DATA
-    xseg = xk(i_start:i_end);
+    % OpenLPT velocities for this contiguous segment. yseg is kept only to
+    % look up the local Eulerian mean profile below (position, not velocity).
     yseg = yk(i_start:i_end);
-    zseg = zk(i_start:i_end);
 
-   % Velocity via central differences
-    u_trk = gradient(xseg, dt_track);
-    v_trk = gradient(yseg, dt_track);
-    w_trk = gradient(zseg, dt_track);
+    u_trk = uk(i_start:i_end);
+    v_trk = vk(i_start:i_end);
+    w_trk = wk(i_start:i_end);
 
     % Subtract LOCAL Eulerian mean at the particle's y-position
     % Interpolate the plane-averaged mean profile to each track point's y
