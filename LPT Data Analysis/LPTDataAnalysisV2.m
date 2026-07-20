@@ -22,33 +22,54 @@ end
 file = fullPath; %Tracks to analyze.
 % This file stores tracks in "long" (row-per-observation) format: a single
 % matrix variable `data`, [nObservations x 19], with columns:
-%   1: track ID (arbitrary integer label, not contiguous)
-%   2: frame number (integer, increases by 1 within a track, no gaps)
-%   3-5: x, y, z position
-%   6-8: u, v, w velocity
-%   9-19: additional columns (likely accelerations + per-camera image
-%         coordinates based on typical OpenLPT export layout)
+%   1:    track ID (arbitrary integer label, not contiguous)
+%   2:    frame number (integer, increases by 1 within a track, no gaps)
+%   3-5:  x, y, z position          [m]
+%   6-8:  u, v, w velocity          [m/s]
+%   9-11: a_x, a_y, a_z acceleration [mm/s^2]
+%   12-19: per-camera image coordinates [px] (4 cameras x 2)
+%
+% ---------------------------- UNITS -------------------------------------
+% The FILE stores positions in mm and velocities in mm/s. On load they are
+% converted to SI (see mm2m below), so every quantity in this script is SI:
+%   length      x,y,z            : m
+%   velocity    u,v,w            : m/s
+%   Reynolds stress / TKE        : m^2/s^2
+%   lag / integral timescale     : s
+%   eddy diffusivity D           : m^2/s
+% IMPORTANT: the velocities in cols 6-8 are ALREADY physical (mm/s). OpenLPT
+% computes them as a finite difference of the mm positions using the
+% camera sample rate, so the frame rate is already baked in (verified:
+% stored u == diff(x)*fps). dt_frame below MUST equal that same rate (1/fps)
+% so that the time axis `t`, the re-derived Lagrangian velocities, and the
+% file velocities are all mutually consistent.
+% ------------------------------------------------------------------------
 
-% Time vector. The file only stores integer frame numbers, not a
-    % physical time/frame-rate, so dt_frame defaults to 1 (t is in units
-    % of "frames"). Set dt_frame to your camera's actual sample interval
-    % (e.g. 1/fps, in seconds) if you want t in physical time units
-    dt_frame = 1/400;
+% Camera sample rate used in the OpenLPT export [frames/s]. Must match the
+    % rate the tracks were exported with, otherwise the time axis and the
+    % file's mm/s velocities disagree.
+    fps = 600;              % [Hz]
+    dt_frame = 1/fps;       % time between frames [s]
 
 %% Load tracks
 
     raw = load(file);
     data = raw.data;          % [trackID, frame, x, y, z, u, v, w, ...]
 
+    % The file stores positions in mm and velocities in mm/s. Convert both
+    % to SI (m and m/s) here so every downstream quantity is in SI:
+    % positions [m], velocities [m/s], stresses/TKE [m^2/s^2], D [m^2/s].
+    mm2m = 1e-3;              % mm -> m
+
     trackID = data(:,1);
     frame   = data(:,2);
-    xPos    = data(:,3);
-    yPos    = data(:,4);
-    zPos    = data(:,5);
+    xPos    = data(:,3) * mm2m;      % [m]
+    yPos    = data(:,4) * mm2m;      % [m]
+    zPos    = data(:,5) * mm2m;      % [m]
 
-    uVel = data(:,6);
-    vVel = data(:,7);
-    wVel = data(:,8);
+    uVel = data(:,6) * mm2m;         % [m/s]
+    vVel = data(:,7) * mm2m;         % [m/s]
+    wVel = data(:,8) * mm2m;         % [m/s]
 
     % Map arbitrary track IDs -> contiguous column indices 1..nTracks
     [~, ~, colIdx] = unique(trackID);
@@ -110,9 +131,9 @@ Ylim = [yLo - padFrac*(yHi-yLo), yHi + padFrac*(yHi-yLo)];
 Zlim = [zLo - padFrac*(zHi-zLo), zHi + padFrac*(zHi-zLo)];
 
 %Number of bins in x, y, and z. Evenly spaced
-Xbin = 5;
-Ybin = 5;
-Zbin = 5;
+Xbin = 40;
+Ybin = 40;
+Zbin = 40;
 
 %Tracks per chunk; tune for memory. 1000 works well. Only need for a bunch
 %of tracks
@@ -166,11 +187,11 @@ for k = 1:n
 end 
 
 c = colorbar;
-c.Label.String = 'Speed';
+c.Label.String = 'Speed [m/s]';
 c.Label.FontName = 'Latex';
-xlabel('x')
-ylabel('y')
-zlabel('z')
+xlabel('$x$ [m]')
+ylabel('$y$ [m]')
+zlabel('$z$ [m]')
 xlim(Xlim)
 ylim(Ylim)
 zlim(Zlim)
@@ -494,14 +515,19 @@ if isempty(i_zero_u), i_zero_u = max_lag + 1; end
 if isempty(i_zero_v), i_zero_v = max_lag + 1; end
 if isempty(i_zero_w), i_zero_w = max_lag + 1; end
 
+% Integral timescales [s]: R is dimensionless, tau is in s
 TL_u = trapz(tau_vec(1:i_zero_u), Ruu(1:i_zero_u));
 TL_v = trapz(tau_vec(1:i_zero_v), Rvv(1:i_zero_v));
 TL_w = trapz(tau_vec(1:i_zero_w), Rww(1:i_zero_w));
 
-% Eddy diffusivities
+% Eddy diffusivities [m^2/s] = (m^2/s^2) * s
+% Ruu_raw(1) is the velocity variance [m^2/s^2]; TL is [s]
 D_u = Ruu_raw(1) * TL_u;
 D_v = Rvv_raw(1) * TL_v;
 D_w = Rww_raw(1) * TL_w;
+
+fprintf('Integral timescales  [s]    : TL_u=%.4g  TL_v=%.4g  TL_w=%.4g\n', TL_u, TL_v, TL_w);
+fprintf('Eddy diffusivities   [m^2/s]: D_u =%.4g  D_v =%.4g  D_w =%.4g\n', D_u, D_v, D_w);
 
 %% ----------------PLOTTING-------------------------------------------
 %% Mean velocities
@@ -513,7 +539,7 @@ zc = 0.5*(gridZ(1:end-1) + gridZ(2:end));
 Uprofile_y = squeeze(mean(Umean, [1 3], 'omitnan'));
 figure;
 plot(yc, Uprofile_y);
-xlabel('$y$'); ylabel('$\langle \overline{u} \rangle$');
+xlabel('$y$ [m]'); ylabel('$\langle \overline{u} \rangle$ [m/s]');
 title('Mean streamwise velocity profile');
 grid on;
 
@@ -521,7 +547,7 @@ grid on;
 Uprofile_z = squeeze(mean(Umean, [1 2], 'omitnan'));
 figure;
 plot(zc, Uprofile_z);
-xlabel('$z$'); ylabel('$\langle \overline{u} \rangle$');
+xlabel('$z$ [m]'); ylabel('$\langle \overline{u} \rangle$ [m/s]');
 title('Mean streamwise velocity profile');
 grid on;
 
@@ -531,27 +557,27 @@ figure;
 imagesc(xc, yc, squeeze(Umean(:,:,kmid))');
 axis xy equal tight; 
 c = colorbar;
-c.Label.String = 'u';
-c.Label.FontName = 'Latex';
-xlabel('$x$'); ylabel('$y$');
-title(sprintf('$\\langle u \\rangle$ at $z = %.2f$', zc(kmid)));
+c.Label.String = '$\langle u \rangle$ [m/s]';
+c.Label.Interpreter = 'latex';
+xlabel('$x$ [m]'); ylabel('$y$ [m]');
+title(sprintf('$\\langle u \\rangle$ at $z = %.3f$ m', zc(kmid)));
 
 figure;
 imagesc(xc, yc, squeeze(sum(counts,3))');
-axis xy tight; 
+axis xy tight;
 c = colorbar;
 c.Label.String = 'Samples';
 c.Label.FontName = 'Latex';
-xlabel('$x$'); ylabel('$y$');
+xlabel('$x$ [m]'); ylabel('$y$ [m]');
 title('Samples per $(x,y)$ bin (summed over $z$)');
 
 figure;
 imagesc(xc, zc, squeeze(sum(counts,2))');
-axis xy tight; 
+axis xy tight;
 c = colorbar;
 c.Label.String = 'Samples';
 c.Label.FontName = 'Latex';
-xlabel('$x$'); ylabel('$z$');
+xlabel('$x$ [m]'); ylabel('$z$ [m]');
 title('Samples per $(x,z)$ bin (summed over $y$)');
 
 %% Binned Reynolds stress plots
@@ -567,7 +593,7 @@ plot(yc, uu_prof);
 plot(yc, vv_prof);
 plot(yc, ww_prof);
 plot(yc, uv_prof);
-xlabel('$y$'); ylabel('Reynolds stress');
+xlabel('$y$ [m]'); ylabel('Reynolds stress [m$^2$/s$^2$]');
 legend({'$\overline{u''u''}$','$\overline{v''v''}$','$\overline{w''w''}$','$\overline{u''v''}$'}, ...
        'Location','best');
 title('Reynolds stress profiles');
@@ -576,7 +602,7 @@ hold off;
 
 figure;
 plot(yc, tke_prof);
-xlabel('$y$'); ylabel('$k = \frac{1}{2}\overline{u_i'' u_i''}$');
+xlabel('$y$ [m]'); ylabel('$k = \frac{1}{2}\overline{u_i'' u_i''}$ [m$^2$/s$^2$]');
 title('Turbulent kinetic energy profile');
 grid on;
 
@@ -587,26 +613,26 @@ tiledlayout(2, 2);
 nexttile;
 plot(yc, uu_prof, 'LineWidth', 2); hold on;
 plot(yc, uu_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{u''u''}$ vs $\langle \tilde u \tilde u \rangle$');
+xlabel('$y$ [m]'); ylabel('$\overline{u''u''}$ vs $\langle \tilde u \tilde u \rangle$ [m$^2$/s$^2$]');
 legend({'Reynolds', 'Dispersive'}, 'Location','best');
 title('$uu$'); grid on;
 
 nexttile;
 plot(yc, vv_prof, 'LineWidth', 2); hold on;
 plot(yc, vv_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{v''v''}$ vs $\langle \tilde v \tilde v \rangle$');
+xlabel('$y$ [m]'); ylabel('$\overline{v''v''}$ vs $\langle \tilde v \tilde v \rangle$ [m$^2$/s$^2$]');
 title('$vv$'); grid on;
 
 nexttile;
 plot(yc, ww_prof, 'LineWidth', 2); hold on;
 plot(yc, ww_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{w''w''}$ vs $\langle \tilde w \tilde w \rangle$');
+xlabel('$y$ [m]'); ylabel('$\overline{w''w''}$ vs $\langle \tilde w \tilde w \rangle$ [m$^2$/s$^2$]');
 title('$ww$'); grid on;
 
 nexttile;
 plot(yc, uv_prof, 'LineWidth', 2); hold on;
 plot(yc, uv_disp, 'LineWidth', 2);
-xlabel('$y$'); ylabel('$\overline{u''v''}$ vs $\langle \tilde u \tilde v \rangle$');
+xlabel('$y$ [m]'); ylabel('$\overline{u''v''}$ vs $\langle \tilde u \tilde v \rangle$ [m$^2$/s$^2$]');
 title('$uv$'); grid on;
 
 figure;
@@ -614,7 +640,7 @@ plot(yc, uu_disp, 'DisplayName', '$|\langle\tilde u \tilde u\rangle|$'); hold on
 plot(yc, vv_disp, 'DisplayName', '$|\langle\tilde v \tilde v\rangle|$');
 plot(yc, ww_disp, 'DisplayName', '$|\langle\tilde w \tilde w\rangle|$');
 plot(yc, uv_disp, 'DisplayName', '$|\langle\tilde u \tilde v\rangle|$');
-xlabel('$y$'); ylabel('Dispersive flux (abs)');
+xlabel('$y$ [m]'); ylabel('Dispersive flux (abs) [m$^2$/s$^2$]');
 title('Dispersive flux magnitudes (log scale)');
 legend('Interpreter','latex','Location','best'); grid on;
 
@@ -624,7 +650,7 @@ plot(tau_vec, Ruu, 'LineWidth', 2); hold on;
 plot(tau_vec, Rvv, 'LineWidth', 2);
 plot(tau_vec, Rww, 'LineWidth', 2);
 yline(0, 'k--');
-xlabel('$\tau$'); ylabel('$R_{ii}(\tau)$');
+xlabel('$\tau$ [s]'); ylabel('$R_{ii}(\tau)$');
 legend({'$R_{uu}$', '$R_{vv}$', '$R_{ww}$'}, 'Location', 'best');
 title('Lagrangian velocity autocorrelation');
 grid on;

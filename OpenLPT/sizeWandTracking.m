@@ -55,8 +55,8 @@ detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly 
 edgeThresh = [0.15, 0.05, 0.10, 0.15];
 
 % --- Post-detection filters ---
-minWandPx = 20;   % min wand pixel length (px)
-maxWandPx = 700;   % max wand pixel length (px)
+minWandPx = 50;   % min wand pixel length (px)
+maxWandPx = 300;   % max wand pixel length (px)
 maxJump   = 800;    % max per-frame displacement for temporal filter (px)
 
 % --- CSV export ---

@@ -7,7 +7,7 @@
 clear; clc; close all;
 
 % --- Configuration ---
-testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_16_26_flumeCalibration\cam1\frame_00051.tif'; % Path to your uploaded test frame
+testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_16_26_flumeCalibration2\cam1\frame_00515.tif'; % Path to your uploaded test frame
 radiusRange   = [25, 70];
 methodToTest  = 'TwoStage';        % Swap to 'PhaseCode' to compare methods
 
