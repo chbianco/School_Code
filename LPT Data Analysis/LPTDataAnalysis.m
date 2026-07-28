@@ -534,6 +534,7 @@ D_w = Rww_raw(1) * TL_w;
 fprintf('Integral timescales  [s]    : TL_u=%.4g  TL_v=%.4g  TL_w=%.4g\n', TL_u, TL_v, TL_w);
 fprintf('Eddy diffusivities   [m^2/s]: D_u =%.4g  D_v =%.4g  D_w =%.4g\n', D_u, D_v, D_w);
 
+
 %% ======================= Plotting =======================
 %% Mean velocities
 xc = 0.5*(gridX(1:end-1) + gridX(2:end));
