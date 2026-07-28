@@ -1,4 +1,27 @@
-%% Preamble
+% =========================================================================
+% LPTDataAnlysis.m
+% Author: Christopher Bianco
+% christopherhbianco@gmail.com
+% =========================================================================
+% 
+% DEPENDENCIES:
+% - None
+% 
+% PURPOSE:
+% Analyze particle track data outputted by OpenLPT. Theoretically works on
+% any Lagrangian particle track data as long as the format matches
+
+% Expects a .mat file formatted the same way as OpenLPT output
+% OpenLPT stores tracks in "long" (row-per-observation) format: a single
+% matrix variable `data`, [nObservations x 19], with columns:
+%   1:    track ID (arbitrary integer label, not contiguous)
+%   2:    frame number (integer, increases by 1 within a track, no gaps)
+%   3-5:  x, y, z position          [m]
+%   6-8:  u, v, w velocity          [m/s]
+%   9-11: a_x, a_y, a_z acceleration [mm/s^2]
+%   12-19: per-camera 2d image coordinates [px] (4 cameras x 2)
+
+%% ======================= Preamble =======================
 close all; clc;
 clearvars 
 set(groot, 'defaultTextInterpreter', 'Latex');
@@ -8,7 +31,7 @@ set(groot, 'defaultTextFontSize', 12);
 set(groot, 'defaultAxesFontSize', 16);
 set(groot, 'defaultLineLineWidth', 2);
 
-%% Loading file
+%% ======================= Load File =======================
 [file, path] = uigetfile('*.*', 'Select a File');
 
 % Check if the user cancelled the dialog
@@ -20,90 +43,74 @@ else
     fprintf('Selected: %s\n', fullPath);
 end
 file = fullPath; %Tracks to analyze.
-% OpenLPT stores tracks in "long" (row-per-observation) format: a single
-% matrix variable `data`, [nObservations x 19], with columns:
-%   1:    track ID (arbitrary integer label, not contiguous)
-%   2:    frame number (integer, increases by 1 within a track, no gaps)
-%   3-5:  x, y, z position          [m]
-%   6-8:  u, v, w velocity          [m/s]
-%   9-11: a_x, a_y, a_z acceleration [mm/s^2]
-%   12-19: per-camera image coordinates [px] (4 cameras x 2)
-%
-% IMPORTANT: the velocities in cols 6-8 are ALREADY physical (mm/s). OpenLPT
-% computes them as a finite difference of the mm positions using the
-% camera sample rate, so the frame rate is already baked in
-% dt_frame below MUST equal that same rate (1/fps)
-% so that the time axis `t`, the re-derived Lagrangian velocities, and the
-% file velocities are all mutually consistent.
-% ------------------------------------------------------------------------
 
-% Camera sample rate used in the OpenLPT export [frames/s]. Must match the
-    % rate the tracks were exported with, otherwise the time axis and the
-    % file's mm/s velocities disagree.
-    fps = 600;              % [Hz]
-    dt_frame = 1/fps;       % time between frames [s]
+% Camera sample rate used in the OpenLPT export [frames/s]. MUST MATCH the
+% rate the tracks were exported with, otherwise the time axis and the
+% file's mm/s velocities disagree.
+    fps = 600; % [Hz]
+    dt_frame = 1/fps; % time between frames [s]
 
-%% Load tracks
+%% ======================= Load Tracks =======================
 
-    raw = load(file);
-    data = raw.data;          % [trackID, frame, x, y, z, u, v, w, ...]
+raw = load(file);
+data = raw.data; % [trackID, frame, x, y, z, u, v, w, ...]
 
-    % The file stores positions in mm and velocities in mm/s. Convert both
-    % to SI (m and m/s) here so every downstream quantity is in SI:
-    % positions [m], velocities [m/s], stresses/TKE [m^2/s^2], D [m^2/s].
-    mm2m = 1e-3;              % mm -> m
+% The file stores positions in mm and velocities in mm/s. Convert both
+% to SI (m and m/s) here so every downstream quantity is in SI:
+% positions [m], velocities [m/s], stresses/TKE [m^2/s^2], D [m^2/s].
+mm2m = 1e-3; % mm -> m
 
-    trackID = data(:,1);
-    frame   = data(:,2);
-    xPos    = data(:,3) * mm2m;      % [m]
-    yPos    = data(:,4) * mm2m;      % [m]
-    zPos    = data(:,5) * mm2m;      % [m]
+trackID = data(:,1);
+frame   = data(:,2);
+xPos    = data(:,3) * mm2m; % [m]
+yPos    = data(:,4) * mm2m; % [m]
+zPos    = data(:,5) * mm2m; % [m]
 
-    uVel = data(:,6) * mm2m;         % [m/s]
-    vVel = data(:,7) * mm2m;         % [m/s]
-    wVel = data(:,8) * mm2m;         % [m/s]
+uVel = data(:,6) * mm2m; % [m/s]
+vVel = data(:,7) * mm2m; % [m/s]
+wVel = data(:,8) * mm2m; % [m/s]
 
-    % Map arbitrary track IDs -> contiguous column indices 1..nTracks
-    [~, ~, colIdx] = unique(trackID);
-    nTracks = max(colIdx);
+% Map arbitrary track IDs -> contiguous column indices 1..nTracks
+[~, ~, colIdx] = unique(trackID);
+nTracks = max(colIdx);
 
-    % Build a shared frame axis spanning every sample; each sample's row
-    % position is its frame number offset from the global minimum frame.
-    frameMin = min(frame);
-    frameMax = max(frame);
-    nT = frameMax - frameMin + 1;
-    rowIdx = frame - frameMin + 1;
+% Build a shared frame axis spanning every sample; each sample's row
+% position is its frame number offset from the global minimum frame.
+frameMin = min(frame);
+frameMax = max(frame);
+nT = frameMax - frameMin + 1;
+rowIdx = frame - frameMin + 1;
 
-    t = (0:nT-1)' * dt_frame;
+t = (0:nT-1)' * dt_frame;
 
-    % Scatter long-format samples into NaN-padded wide matrices so the
-    % rest of the script (written for nT x nTracks position matrices)
-    % works unchanged.
-    x = NaN(nT, nTracks);
-    y = NaN(nT, nTracks);
-    z = NaN(nT, nTracks);
+% Scatter long-format samples into NaN-padded wide matrices so the
+% rest of the script (written for nT x nTracks position matrices)
+% works unchanged.
+x = NaN(nT, nTracks);
+y = NaN(nT, nTracks);
+z = NaN(nT, nTracks);
 
-    u = NaN(nT, nTracks);
-    v = NaN(nT, nTracks);
-    w = NaN(nT, nTracks);
+u = NaN(nT, nTracks);
+v = NaN(nT, nTracks);
+w = NaN(nT, nTracks);
 
 
-    linIdx = sub2ind([nT, nTracks], rowIdx, colIdx);
-    x(linIdx) = xPos;
-    y(linIdx) = yPos;
-    z(linIdx) = zPos;
+linIdx = sub2ind([nT, nTracks], rowIdx, colIdx);
+x(linIdx) = xPos;
+y(linIdx) = yPos;
+z(linIdx) = zPos;
 
-    u(linIdx) = uVel;
-    v(linIdx) = vVel;
-    w(linIdx) = wVel;
+u(linIdx) = uVel;
+v(linIdx) = vVel;
+w(linIdx) = wVel;
 
-    tracks.t = t; tracks.x = x; tracks.y = y; tracks.z = z;
-    tracks.u = u; tracks.v = v; tracks.w = w;
+tracks.t = t; tracks.x = x; tracks.y = y; tracks.z = z;
+tracks.u = u; tracks.v = v; tracks.w = w;
 
-    fprintf('Loaded: %d samples x %d tracks (%.6f GB per array)\n', ...
-        nT, nTracks, nT*nTracks*8/1e9);
+fprintf('Loaded: %d samples x %d tracks (%.6f GB per array)\n', ...
+    nT, nTracks, nT*nTracks*8/1e9);
 
-%% User inputs
+%% ======================= User Parameters =======================
 %Number of tracks to analyze. Set to nTracks to keep all tracks
 N = nTracks;  
 
@@ -111,12 +118,13 @@ N = nTracks;
 n = min(nTracks, 200);
 
 %Bounds of LPT view area, as a 2x1 (ie 0, 20)
-% Auto-computed from the data with 5% padding
-% Override manually below if you want a fixed
-% window instead (e.g. for comparing multiple datasets on the same axes).
+%Auto-computed from the data with 5% padding
+%Override manually below if you want a fixed
+%window instead (e.g. for comparing multiple datasets on the same axes).
 xLo = min(x(:)); xHi = max(x(:));
 yLo = min(y(:)); yHi = max(y(:));
 zLo = min(z(:)); zHi = max(z(:));
+
 padFrac = 0.05;
 Xlim = [xLo - padFrac*(xHi-xLo), xHi + padFrac*(xHi-xLo)];
 Ylim = [yLo - padFrac*(yHi-yLo), yHi + padFrac*(yHi-yLo)];
@@ -135,7 +143,7 @@ chunkSize = 1000;
 %Clamped to (longest available track - 1)
 max_lag = min(2500, max(sum(~isnan(x), 1)) - 1);
 
-%% Sort positions and velocities by track length 
+%% ======================= Sort by Track Length =======================
 x_lng = sum(~isnan(x), 1);
 [~, sorted_idx] = sort(x_lng, 'descend');
 
@@ -148,7 +156,7 @@ v = v(:, sorted_idx);
 w = w(:, sorted_idx);
 
 
-%% Plot n tracks colored by speed
+%% ======================= Plot Tracks Colored by Speed =======================
 maxTrackLen = max(sum(~isnan(x), 1)); %sized to the dataset
 speed = NaN(maxTrackLen, n);
 
@@ -193,7 +201,7 @@ view(3)
 
 hold off
 
-%% Keep N longest tracks and organize
+%% ======================= Keep N Longest, Organize =======================
 trackLengths = sum(~isnan(x), 1);
 keep = 1:min(N, nTracks);
 
@@ -221,7 +229,7 @@ t = t(1:maxLen);
 [nT, nTracks] = size(x);
 fprintf('Kept %d tracks, max length %d samples\n', nTracks, nT);
 
-%% Eulerian Binning
+%% ======================= Eularian Binning =======================
 %Define bin grid
 gridX = linspace(Xlim(1), Xlim(2), Xbin + 1);
 gridY = linspace(Ylim(1), Ylim(2), Ybin + 1);
@@ -289,14 +297,14 @@ for c = 1:nChunks
     fprintf('  chunk %d/%d done\n', c, nChunks);
 end
 
-Umean = sumU ./ counts;   % NaN where counts==0
+Umean = sumU ./ counts; % NaN where counts==0
 Vmean = sumV ./ counts;
 Wmean = sumW ./ counts;
 
 fprintf('Total samples binned: %d\n', sum(counts(:)));
 
-%% Reynolds stresses
-%Bin Reynolds Stresses 
+%% ======================= Reynolds Stresses =======================
+% Bin Reynolds Stresses 
 sumUU = zeros(nx, ny, nz);
 sumVV = zeros(nx, ny, nz);
 sumWW = zeros(nx, ny, nz);
@@ -366,7 +374,7 @@ vw = sumVW ./ counts;
 % Turbulent kinetic energy
 tke = 0.5 * (uu + vv + ww);
 
-%% Dispersive fluxes
+%% ======================= Dispersive Flux =======================
 % Step 1: plane-averaged means (1D profiles in y)
 U_plane = squeeze(mean(Umean, [1 3], 'omitnan'));   % ny x 1
 V_plane = squeeze(mean(Vmean, [1 3], 'omitnan'));
@@ -385,14 +393,14 @@ uv_disp = squeeze(mean(U_tilde .* V_tilde, [1 3], 'omitnan'));
 uw_disp = squeeze(mean(U_tilde .* W_tilde, [1 3], 'omitnan'));
 vw_disp = squeeze(mean(V_tilde .* W_tilde, [1 3], 'omitnan'));
 
-%% Lagrangian Statistics
+%% ======================= Lagrangian Statistics =======================
 % Accumulators
 Ruu_sum = zeros(max_lag + 1, 1);
 Rvv_sum = zeros(max_lag + 1, 1);
 Rww_sum = zeros(max_lag + 1, 1);
-R_count = zeros(max_lag + 1, 1);   % number of valid pairs per lag
+R_count = zeros(max_lag + 1, 1); % number of valid pairs per lag
 
-dt_track = t(2) - t(1);   % assuming uniform time step
+dt_track = t(2) - t(1); % assuming uniform time step
 tau_vec = (0:max_lag)' * dt_track;
 
 % U_plane/V_plane/W_plane can contain NaN at y-bins with zero samples
@@ -419,9 +427,7 @@ for k = 1:nTracks
     zk = z(:, k);
 
     % Velocities come straight from OpenLPT (data cols 6-8, converted to
-    % m/s on load). This script NEVER finite-differences positions to get
-    % velocity -- OpenLPT's fitted velocities are less noisy, especially in
-    % the poorly-resolved depth (w) direction.
+    % m/s on load)
     uk = u(:, k);
     vk = v(:, k);
     wk = w(:, k);
@@ -431,7 +437,7 @@ for k = 1:nTracks
     idx_valid = find(valid);
 
     if length(idx_valid) < 10
-        continue   % skip very short tracks
+        continue % skip very short tracks
     end
 
     % Contiguous segment (tracks might have gaps — take longest contiguous block)
@@ -528,7 +534,7 @@ D_w = Rww_raw(1) * TL_w;
 fprintf('Integral timescales  [s]    : TL_u=%.4g  TL_v=%.4g  TL_w=%.4g\n', TL_u, TL_v, TL_w);
 fprintf('Eddy diffusivities   [m^2/s]: D_u =%.4g  D_v =%.4g  D_w =%.4g\n', D_u, D_v, D_w);
 
-%% ----------------PLOTTING-------------------------------------------
+%% ======================= Plotting =======================
 %% Mean velocities
 xc = 0.5*(gridX(1:end-1) + gridX(2:end));
 yc = 0.5*(gridY(1:end-1) + gridY(2:end));

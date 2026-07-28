@@ -16,7 +16,6 @@
 % Expects a parent folder (selected via dialog) containing one subfolder
 % per camera: cam0/, cam1/, ..., camN-1/, each full of .tif frames.
 
-
 clear; clc; close all;
 
 %% ======================= User Parameters =======================
