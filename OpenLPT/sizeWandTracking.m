@@ -1,10 +1,17 @@
 % =========================================================================
 % WandTracking.m
+% Author: Christopher Bianco
+% christopherhbianco@gmail.com
 % =========================================================================
+
+% DEPENDENCIES
+% - Parallel computing toolbox
+% - Image processing toolbox 
+
 % PURPOSE:
-%   Automatically detect the two LED tips of the calibration wand in every
-%   synchronised image frame, then export detections to a CSV usable by
-%   OpenLPT wand calibration.
+% Automatically detect the two LED tips of the calibration wand a set of 
+% synchornized image frames, then export detections to a CSV usable by
+% OpenLPT's wand calibration.
 %
 % DETECTION PIPELINE (per image):
 %   1. Background subtraction (median of first N frames)
@@ -18,13 +25,10 @@
 %   wand_detections.mat    — struct array of detections per frame per camera
 %   wand_points.csv        — OpenLPT-compatible wand point CSV
 %   detection_overview.png — montage of sample detections
-% =========================================================================
 clear; clc; close all; 
 
-%% =========================================================================
-%  CONFIGURATION — edit this section to match your setup
-% =========================================================================
-% --- Paths ---
+%% ======================= User Parameters =======================
+% Paths
 mainDir = uigetdir(pwd, 'Select calibration folder (containing cam0/, cam1/, etc.)');
 
 % Check valid dir
@@ -36,43 +40,43 @@ else
     return;
 end
 
-wandDir    = mainDir; % Expects cam0/, cam1/, etc. to live directly inside this folder
+wandDir = mainDir; % Expects cam0/, cam1/, etc. to live directly inside this folder
 resultsDir = mainDir; % Outputs (.mat, .csv) will be saved directly here
 
-% --- Camera / frame settings ---
-nCams = 4;       % number of cameras
+% Camera / frame settings
+nCams = 4; % number of cameras
 
-% --- LED detection parameters ---
-minRadius = 20;    % min ball radius (px)
-maxRadius = 75;  % max ball radius (px)
-detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly more accurate, but much longer
+% Ball detection parameters
+minRadius = 20; % min ball radius (px)
+maxRadius = 75; % max ball radius (px)
+detection_method = 'twostage'; %Detection method for imfindcircles.
+% Use 'twostage' unless you have a good reason not to 
+
+edgeThresh = [0.15, 0.1, 0.12, 0.15];
 % Edge threshold for imfindcircles, ONE VALUE PER CAMERA (cam0, cam1, ...).
 % Lower = more permissive (finds weaker / lower-contrast circles). 0.125 works
 % well as a default; thresholdTester.m can help determine per-camera values.
-% A single scalar is also accepted
-% and will be applied to every camera.
-edgeThresh = [0.15, 0.1, 0.12, 0.15];
+% A single scalar is also accepted and will be applied to every camera.
 
 % --- Post-detection filters ---
-minWandPx = 50;   % min wand pixel length (px)
-maxWandPx = 300;   % max wand pixel length (px)
-maxJump   = 800;    % max per-frame displacement for temporal filter (px)
+minWandPx = 50; % min wand pixel length (px)
+maxWandPx = 300; % max wand pixel length (px)
+maxJump   = 800; % max per-frame displacement for temporal filter (px)
+% Be careful with this if downsampling or removing frames before tracking
 
-% --- CSV export ---
+% CSV export 
 OUTPUT_CSV = fullfile(resultsDir, 'wand_points.csv');
-%% =========================================================================
-% Wand Tracking  
-% =========================================================================
+
+%% ======================= Tracking =======================
+
 fprintf('=== Wand Tracking ===\n\n');
 tic
 
-% -------------------------------------------------------------------------
-% 1.  Discover synchronised frames
-% -------------------------------------------------------------------------
+% ---Discover synchronised frames---
+
 frameSets = cell(nCams, 1);
 camDirs   = cell(nCams, 1);
 for c = 1:nCams
-    % MODIFIED: Changed 'cam%d' with 'c' to 'cam%d' with 'c - 1' to start from cam0
     camDirs{c} = fullfile(wandDir, sprintf('cam%d', c - 1));
     if ~exist(camDirs{c}, 'dir')
         error('Wand image folder not found: %s', camDirs{c});
@@ -92,9 +96,9 @@ for c = 2:nCams
     end
 end
 nFrames = min(cellfun(@numel, frameSets));
-%% -------------------------------------------------------------------------
-% 3.  Detection
-% -------------------------------------------------------------------------
+
+% ---Detection---
+
 %Set detection method 
 if strcmp(detection_method, 'phase')
     method = 'PhaseCode';
@@ -184,10 +188,9 @@ for c = 1:nCams
     fprintf('  Camera %d: %d / %d frames with valid detection\n', c - 1, nValid, nFrames);
 end
 
-%% -------------------------------------------------------------------------
-% POST-DETECTION FILTERS
-% -------------------------------------------------------------------------
-% ---- Wand pixel length filter ----
+%% ======================= Post-Detection Filters =======================
+
+% --- Wand pixel length filter ---
 fprintf('\n--- Wand pixel length filter [%d, %d] px ---\n', minWandPx, maxWandPx);
 for c = 1:nCams
     nDropped = 0;
@@ -202,7 +205,7 @@ for c = 1:nCams
     fprintf('  Cam %d: dropped %d frames (bad wand length)\n', c - 1, nDropped);
 end
 
-% ---- Temporal consistency filter ----
+% --- Temporal consistency filter ---
 fprintf('\n--- Temporal consistency filter [max jump = %d px] ---\n', maxJump);
 for c = 1:nCams
     nDropped = 0;
@@ -229,7 +232,7 @@ for c = 1:nCams
     fprintf('  Cam %d: dropped %d frames (temporal jump)\n', c - 1, nDropped);
 end
 
-% ---- Final counts ----
+% --- Final counts ---
 fprintf('\n--- Final detection counts ---\n');
 for c = 1:nCams
     nValid = sum([detections{c}.valid]);
@@ -237,7 +240,7 @@ for c = 1:nCams
         c - 1, nValid, nFrames, 100*nValid/nFrames);
 end
 
-% ---- Wand pixel length stats ----
+% --- Wand pixel length stats ---
 fprintf('\n--- Wand pixel length stats (post-filter) ---\n');
 for c = 1:nCams
     lens = [];
@@ -253,16 +256,14 @@ for c = 1:nCams
     end
 end
 
-%% -------------------------------------------------------------------------
-% 4.  Save .mat
-% -------------------------------------------------------------------------
+%% ======================= Save .mat File =======================
+
 outFile = fullfile(resultsDir, 'wand_detections.mat');
 save(outFile, 'detections', 'nFrames', 'nCams', 'camDirs', 'frameSets');
 fprintf('\n[WandTracking] Detections saved to %s\n', outFile);
 
-%% -------------------------------------------------------------------------
-% 5.  Export OpenLPT CSV
-% -------------------------------------------------------------------------
+%% ======================= Export CSV for OpenLPT =======================
+
 fprintf('\n--- Exporting OpenLPT CSV ---\n');
 
 % Find frames valid across ALL cameras
@@ -297,7 +298,7 @@ for fi = 1:numel(common_frames)
         m_large = detections{c}(f).metrics(1);
         m_small = detections{c}(f).metrics(2);
         
-        % Small written first (insertion sequence sorting is critical to the OpenLPT tracking engine)
+        % Small written first
         fprintf(fid, '%d,%d,Filtered_Small,0,%.6f,%.6f,%.4f,%.1f\n', ...
             f, cam_id, x_small, y_small, r_small, m_small);
         fprintf(fid, '%d,%d,Filtered_Large,1,%.6f,%.6f,%.4f,%.1f\n', ...

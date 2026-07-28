@@ -1,17 +1,26 @@
 % =========================================================================
-% ThresholdTester.m
+% thresholdTester.m
+% Author: Christopher Bianco
+% christopherhbianco@gmail.com
 % =========================================================================
-% PURPOSE: Run a diagnostic sweep over different EdgeThreshold values 
-%          to balance imfindcircles processing speed and detection accuracy.
-% =========================================================================
+%
+% DEPENDENCIES: 
+% - Image processing toolbox
+%
+% PURPOSE: 
+% Run a diagnostic sweep over different EdgeThreshold values to balance 
+% imfindcircles processing speed and detection accuracy.
+
 clear; clc; close all;
+
+%% =========================================================================
 
 % --- Configuration ---
 testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_20_26_flumeCalibration\cam1\frame_00120.tif'; % Path to your uploaded test frame
-radiusRange   = [25, 70];
-methodToTest  = 'TwoStage';        % Swap to 'PhaseCode' to compare methods
+radiusRange   = [25, 70]; % Range of possible detected circle sizes
+methodToTest  = 'TwoStage'; % 'TwoStage' or 'PhaseCode' to compare methods
 
-% Test a sweep from very permissive (0.03) to aggressive (0.25)
+% Test a sweep from very permissive (low, ex 0.03) to aggressive (ex 0.25)
 thresholdsToTest = [0.03, 0.05, 0.08, 0.125];
 
 % --- Image Preparation ---
@@ -26,7 +35,7 @@ else
     im_gray = im;
 end
 
-% Boost visualization contrast slightly since your raw frame is naturally dark
+% Boost visualization contrast slightly
 im_disp = imadjust(im_gray);
 
 figure('Name', 'EdgeThreshold Diagnostic Sweep', 'Position', [100, 100, 1200, 800]);

@@ -1,17 +1,18 @@
-function calibrateAxes()
-% CALIBRATE_AXES  Interactive coordinate-axis calibration from the black-sphere
-% "axis wand" images (cam0..cam3_axes.tif) for particle tracking.
+%% =========================================================================
+% calibrateAxes.m
+% Author: Christopher Bianco
+% christopherhbianco@gmail.com
+% =========================================================================
+% 
+% DEPENDENCIES:
+% - None
+% 
+% PURPOSE: 
+% Interactive coordinate-axis calibration from the black-sphere
+% "axis wand" images (cam0..cam3_axes.tif) to set the coordinate axis for 
+% OpenLPT particle tracking.
 %
-% The wand
-% --------
-% Three rods cross at a single point (the coordinate-system ORIGIN). Each rod has
-% a black ball at both ends, so there are 3 lines (one per axis) defined by pairs
-% of balls. Ball size encodes depth (closer to the camera => larger). The wand's
-% orientation differs in every camera, which is why you pick the positive
-% directions by hand for each image.
-%
-% Workflow (per camera)
-% ---------------------
+% Workflow (per camera: 
 % For each axis you click the POSITIVE-direction ball, then the NEGATIVE-direction
 % ball. Each click is snapped to the centroid of the dark ball you clicked on (so
 % rough clicks are fine). The origin is computed as the least-squares intersection
@@ -21,39 +22,34 @@ function calibrateAxes()
 %
 % where center_* is the origin and plus_<axis>_* is the positive-direction ball.
 %
-% Controls (the figure must have focus)
-% -------------------------------------
+% Controls: 
 %   left click   select the ball for the current prompt (snaps to centroid)
 %   n            mark the current NEGATIVE ball as "not visible" (skip it)
 %   u            undo the last point
 %   r            restart the current image from scratch
 %   enter        accept the result (only once all required points are set)
 %   esc          skip this camera (writes no row)
-%
-% Uses only base MATLAB (no toolboxes required).
-%
-% Run:  calibrate_axes
 
-% ----------------------------- Configuration ------------------------------ %
+%% ======================= User Parameters =======================
 folder = uigetdir(pwd, 'Select axis folder (containing axis images)');
 cameras = { 0, 'cam0_axes.tif';
             1, 'cam1_axes.tif';
             2, 'cam2_axes.tif';
             3, 'cam3_axes.tif' };
 outputCsv   = fullfile(folder, 'axis_directions.csv');
-searchHalf  = 75;      % half-window (px) searched around each click for the ball
-saveOverlays = true;   % save an annotated PNG next to each source image
+searchHalf  = 75; % half-window (px) searched around each click for the ball
+saveOverlays = true; % save an annotated PNG next to each source image (T/F)
 
-axisColors.x = [0.90 0.10 0.29];   % red   -> X
-axisColors.y = [0.24 0.71 0.29];   % green -> Y
-axisColors.z = [0.26 0.39 0.85];   % blue  -> Z
+axisColors.x = [0.90 0.10 0.29]; % red   -> X
+axisColors.y = [0.24 0.71 0.29]; % green -> Y
+axisColors.z = [0.26 0.39 0.85]; % blue  -> Z
 
 fprintf('%s\n', repmat('-', 1, 70));
 fprintf(['Axis calibration.  For each camera click +X,-X, +Y,-Y, +Z,-Z balls.\n' ...
          'Keys: n=skip negative  u=undo  r=restart  enter=accept  esc=skip.\n']);
 fprintf('%s\n', repmat('-', 1, 70));
 
-rows = [];   % each row: [cam_id cx cy px_x px_y py_x py_y pz_x pz_y]
+rows = []; % each row: [cam_id cx cy px_x px_y py_x py_y pz_x pz_y]
 
 for k = 1:size(cameras, 1)
     camId = cameras{k, 1};
@@ -82,17 +78,16 @@ if isempty(rows)
 end
 writeCsv(outputCsv, rows);
 fprintf('\nWrote %d row(s) to %s\n', size(rows, 1), outputCsv);
-end
 
 
-% ======================================================================== %
-%                         Interactive picker                               %
-% ======================================================================== %
+
+%% ======================= Interactive Picker =======================
+
 function row = pickAxes(gray, camId, half, colors, saveOverlays, folder)
 row = [];
 stepAxis = {'x','x','y','y','z','z'};
 stepSign = [ 1  -1   1  -1   1  -1 ];
-stepReq  = [ 1   0   1   0   1   0 ];   % positive directions are required
+stepReq  = [ 1   0   1   0   1   0 ]; % positive directions are required
 nSteps   = numel(stepAxis);
 [imgH, imgW] = size(gray);
 
@@ -107,18 +102,18 @@ ax  = axes('Parent', fig);
 set(fig, 'WindowButtonDownFcn', @onClick, 'WindowKeyPressFcn', @onKey);
 
 redraw();
-uiwait(fig);          % blocks until a callback deletes the figure
-return                % 'row' is set (accept) or left empty (skip)
+uiwait(fig); % blocks until a callback deletes the figure
+return % 'row' is set (accept) or left empty (skip)
 
-    % ------------------------------ click -------------------------------- %
+    % ---click --- %
     function onClick(~, ~)
         if ~isvalid(ax) || ~strcmp(get(fig, 'SelectionType'), 'normal')
-            return    % only left-clicks select a ball
+            return % only left-clicks select a ball
         end
         cp = get(ax, 'CurrentPoint');
         x = cp(1, 1); y = cp(1, 2);
         if x < 1 || x > imgW || y < 1 || y > imgH
-            return    % click landed outside the image
+            return % click landed outside the image
         end
         if step > nSteps
             return
@@ -134,12 +129,12 @@ return                % 'row' is set (accept) or left empty (skip)
         redraw();
     end
 
-    % ------------------------------ keys --------------------------------- %
+    % ---keys --- %
     function onKey(~, ev)
         switch ev.Key
             case 'n'
                 if step <= nSteps && ~stepReq(step)
-                    state(step) = 2;   % negative ball not visible
+                    state(step) = 2; % negative ball not visible
                     step = step + 1;
                     redraw();
                 end
@@ -150,7 +145,7 @@ return                % 'row' is set (accept) or left empty (skip)
                 pts(:) = NaN; state(:) = 0; step = 1;
                 redraw();
             case 'escape'
-                delete(fig);           % skip camera (row stays empty)
+                delete(fig); % skip camera (row stays empty)
             case 'return'
                 if step > nSteps
                     [ok, origin, plusPts] = solve(pts, state, stepAxis, stepSign);
@@ -162,24 +157,24 @@ return                % 'row' is set (accept) or left empty (skip)
                         if saveOverlays
                             saveOverlay(fig, folder, camId);
                         end
-                        delete(fig);   % accept -> resume uiwait
+                        delete(fig); % accept -> resume uiwait
                     end
                 end
         end
     end
 
-    % --------------------------- nested drawing -------------------------- %
+    % ---nested drawing --- %
     function redraw()
         cla(ax);
         imagesc(ax, gray);
-        colormap(ax, repmat((0:255)'/255, 1, 3));   % grayscale (var 'gray' shadows the fcn)
+        colormap(ax, repmat((0:255)'/255, 1, 3)); % grayscale (var 'gray' shadows the fcn)
         set(ax, 'CLim', [0 255], 'YDir', 'reverse');
         axis(ax, 'image'); axis(ax, 'off'); hold(ax, 'on');
 
         for i = 1:nSteps
             if state(i) ~= 1, continue, end
             col = colors.(stepAxis{i});
-            lw  = 2.5; if stepSign(i) < 0, lw = 1.25; end   % negatives drawn thinner
+            lw  = 2.5; if stepSign(i) < 0, lw = 1.25; end % negatives drawn thinner
             cx = pts(i,1); cy = pts(i,2); r = pts(i,3);
             rectangle(ax, 'Position', [cx-r, cy-r, 2*r, 2*r], ...
                       'Curvature', [1 1], 'EdgeColor', col, 'LineWidth', lw);
@@ -257,10 +252,10 @@ for j = 1:numel(axesList)
     if state(ip) == 1
         plusPts.(ax) = pts(ip, 1:2);
     else
-        return   % every positive direction is required
+        return % every positive direction is required
     end
     if state(im) == 1
-        pairs{end+1} = [pts(ip,1:2); pts(im,1:2)]; %#ok<AGROW>
+        pairs{end+1} = [pts(ip,1:2); pts(im,1:2)];
     end
 end
 if numel(pairs) < 2
@@ -280,21 +275,19 @@ for i = 1:numel(pairs)
     n = norm(d);
     if n == 0, continue, end
     d = d / n;
-    P = eye(2) - d*d';        % projects onto the line's normal direction
+    P = eye(2) - d*d'; % projects onto the line's normal direction
     A = A + P;
     b = b + P*p;
 end
 o = (A \ b)';
 end
 
+%% ======================= Image/Blob Helpers =======================
 
-% ======================================================================== %
-%                         Image / blob helpers                             %
-% ======================================================================== %
 function gray = readGray(imgPath)
 img = imread(imgPath);
 if ndims(img) == 3
-    img = mean(img, 3);       % avoids the rgb2gray toolbox dependency
+    img = mean(img, 3);
 end
 gray = double(img);
 end
@@ -336,7 +329,7 @@ end
 
 function T = otsuThreshold(win)
 % Otsu threshold (0..255). The dark ball is the low-intensity class.
-counts = histcounts(win(:), 0:256);   % 256 bins covering [0,255]
+counts = histcounts(win(:), 0:256); % 256 bins covering [0,255]
 counts = double(counts(:));
 total = sum(counts);
 if total == 0, T = 128; return, end
@@ -349,7 +342,7 @@ denom = omega .* (1 - omega);
 sigmaB = (muT * omega - mu).^2 ./ denom;
 sigmaB(denom == 0) = -Inf;
 [~, idx] = max(sigmaB);
-T = idx - 1;   % bin index -> intensity value
+T = idx - 1; % bin index -> intensity value
 end
 
 
@@ -381,14 +374,12 @@ rows = region(:, 1);
 cols = region(:, 2);
 end
 
+%% ======================= Output =======================
 
-% ======================================================================== %
-%                              Output                                      %
-% ======================================================================== %
 function saveOverlay(fig, folder, camId)
 out = fullfile(folder, sprintf('cam%d_axes_overlay.png', camId));
 try
-    exportgraphics(fig, out, 'Resolution', 120);   % R2020a+
+    exportgraphics(fig, out, 'Resolution', 120);
 catch
     saveas(fig, out);
 end
