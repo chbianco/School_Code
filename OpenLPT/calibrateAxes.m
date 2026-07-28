@@ -35,8 +35,7 @@ function calibrateAxes()
 % Run:  calibrate_axes
 
 % ----------------------------- Configuration ------------------------------ %
-folder = fileparts(mfilename('fullpath'));
-if isempty(folder), folder = pwd; end
+folder = uigetdir(pwd, 'Select axis folder (containing axis images)');
 cameras = { 0, 'cam0_axes.tif';
             1, 'cam1_axes.tif';
             2, 'cam2_axes.tif';

@@ -49,11 +49,11 @@ frameGlob    = 'imgFile/cam0/img*.tif';
 nFramesToUse = 20;     % average N over this many evenly spaced frames
 
 % --- Acquisition / calibration ---
-voxelToMm   = 0.27;    % [mm/vox] your reconstruction grid scale
-fps         = 600;     % [1/s] frame rate
-U_track     = 0.50;    % [m/s] FASTEST velocity to track (freestream). This
+voxelToMm   = 0.285;    % [mm/vox] your reconstruction grid scale
+fps         = 700;     % [1/s] frame rate
+U_track     = 0.20;    % [m/s] FASTEST velocity to track (freestream). This
                        % sets the largest per-frame displacement.
-pxToMm      = 0.27;    % [mm/px] object-space size of one IMAGE pixel. Only
+pxToMm      = 0.285;    % [mm/px] object-space size of one IMAGE pixel. Only
                        % used to cross-check the density spacing against the
                        % measured 2D nearest-neighbor distance. If unknown,
                        % leaving it equal to voxelToMm assumes voxel ~ pixel.
@@ -61,7 +61,7 @@ pxToMm      = 0.27;    % [mm/px] object-space size of one IMAGE pixel. Only
 % --- Real illuminated measurement volume [mm] (NOT the inflated bounds) ---
 Lx_mm = 270;           % streamwise / X extent of the seeded, imaged slab
 Ly_mm = 320;           % Y extent
-Lz_mm = 200;            % <-- DEPTH of the illuminated slab. This is the
+Lz_mm = 300;            % <-- DEPTH of the illuminated slab. This is the
                        %     uncertain one; set it to the real lit thickness,
                        %     not the OpenLPT view-volume Z range.
 
@@ -69,7 +69,7 @@ Lz_mm = 200;            % <-- DEPTH of the illuminated slab. This is the
 reprojRMS_px = [0.9 0.9 0.9 1.4];
 
 % --- Detection (match your preprocessing so N is consistent) ---
-countThreshold = 25;   % same as absMinThreshold in the preprocessing script
+countThreshold = 10;   % same as absMinThreshold in the preprocessing script
 localMaxWindow = 3;    % [px] local-max neighborhood (odd, >=3)
 minPeakSep     = 2;    % [px] non-max suppression radius
 

@@ -49,10 +49,9 @@ detection_method = 'twostage'; %Set to 'phase' or 'twostage'. Phase is slightly 
 % Edge threshold for imfindcircles, ONE VALUE PER CAMERA (cam0, cam1, ...).
 % Lower = more permissive (finds weaker / lower-contrast circles). 0.125 works
 % well as a default; thresholdTester.m can help determine per-camera values.
-% cam1 has a strong illumination gradient + dark background structure, so it
-% needs a lower threshold than the others. A single scalar is also accepted
+% A single scalar is also accepted
 % and will be applied to every camera.
-edgeThresh = [0.15, 0.08, 0.12, 0.15];
+edgeThresh = [0.15, 0.1, 0.12, 0.15];
 
 % --- Post-detection filters ---
 minWandPx = 50;   % min wand pixel length (px)

@@ -76,8 +76,8 @@ sigmaNoise = 1.5;            % [px] std of the noise-smoothing Gaussian.
 % --- Detection  ---
 thresholdK     = 0.75;     % threshold = thresholdK * (robust noise sigma).
                         % 0.75 worked well for current setup, 4-6 might be
-                        % a better goal if we get more lifhting 
-absMinThreshold = 15;   % absolute detection-threshold floor, in input-count
+                        % a better goal if we get more lighting 
+absMinThreshold = 10;   % absolute detection-threshold floor, in input-count
                         % units, applied as thresh = max(thresholdK*sigma,
                         % absMinThreshold). This stops a low-noise camera from
                         % detecting arbitrarily deep into faint speckle: with a
@@ -124,7 +124,7 @@ cleanedGain = 4;   % fallback gain, used ONLY if brightRef cannot be estimated.
 noiseFloorK  = 2.5;  % subtract this many robust-noise-sigmas as a soft floor
                      % before gain -> removes the sub-noise "carpet" per camera
                      % while leaving real particles (well above noise) intact.
-targetBright = 180;  % per-camera gain maps the typical bright particle (~p90 of
+targetBright = 200;  % per-camera gain maps the typical bright particle (~p90 of
                      % detected peaks) to this level, equalizing brightness
                      % across cameras and avoiding 255 saturation.
 
