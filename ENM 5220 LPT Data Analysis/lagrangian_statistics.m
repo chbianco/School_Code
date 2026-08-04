@@ -28,7 +28,7 @@ else
 end
 
 %% Keep N longest tracks 
-N = nTracks; %Set to nTracks to keep all tracks 
+N = 5000; %Set to nTracks to keep all tracks 
 
 trackLengths = sum(~isnan(x), 1);
 [~, order] = sort(trackLengths, 'descend');
@@ -426,6 +426,29 @@ for b = 1:n_cols
             TL_u(b), TL_v(b), TL_w(b), D_u(b), D_v(b), D_w(b));
 end
 
+%% FTLE 
+
+fin = isfinite(tracks.x) & isfinite(tracks.y) & isfinite(tracks.z);   % nT x nTracks
+
+dt_frame = 1/400;
+
+%|S|(T): how many particles survive each window
+i0    = round(nT/2);                       % a mid-experiment start frame
+mList = 1:2:min(60, nT-i0);
+nSurv = arrayfun(@(m) nnz(fin(i0,:) & fin(i0+m,:)), mList);
+figure; plot(mList*dt_frame, nSurv,'-o'); xlabel('T [s]'); ylabel('|S|'); grid on
+
+%FTLE for a chosen window  (m<0 for backward-time / attracting LCS)
+m = 20;
+[Xp, sigma, info] = ftleMeshfree(tracks, i0, m, struct('k',12));
+fprintf('T=%.4f s | valid=%d rejected=%d seeds=%d\n', ...
+        info.T, info.nValid, info.nRejected, info.nSeeds);
+
+%scattered sigma -> field on a z-slice for plotting / ridge extraction
+Fs = scatteredInterpolant(Xp(:,1),Xp(:,2),Xp(:,3),sigma,'natural','none');
+% [Xg,Yg] = meshgrid(...); Sg = Fs(Xg,Yg,z0*ones(size(Xg))); ...
+
+
 
 %% -----------PLOTTING------------------
 
@@ -532,4 +555,44 @@ xlabel('$y_0$'); ylabel('$D_t$');
 legend('Location', 'best');
 title('Eddy diffusivity vs initial $y$-position');
 grid on;
+
+%% FTLE Isosurfaces
+
+%% ---- FTLE isosurfaces: grid the scattered field, draw 4 levels ----
+% from prior step: Xp (P x 3) seed positions, sigma (P x 1) FTLE, info.T
+
+qlo = prctile(Xp, 1);  qhi = prctile(Xp, 99);   % trim outlier seeds that inflate the box
+bb  = [qlo; qhi];
+Lxyz = bb(2,:) - bb(1,:);
+ref  = 2;                                      % >1 = smoother triangles (cosmetic)
+h    = (prod(Lxyz)/numel(sigma))^(1/3) / ref;  % grid ~ inter-seed spacing
+xg = bb(1,1):h:bb(2,1);
+yg = bb(1,2):h:bb(2,2);
+zg = bb(1,3):h:bb(2,3);
+[Xg,Yg,Zg] = meshgrid(xg,yg,zg);
+
+Fs = scatteredInterpolant(Xp(:,1),Xp(:,2),Xp(:,3),sigma,'linear','none');
+Vg = Fs(Xg,Yg,Zg);                             % NaN outside hull -> no fake ridges
+
+pct    = [80 90 95 99];                        % upper-tail ridge levels
+levels = prctile(Vg(~isnan(Vg)), pct);
+cmap   = parula(256);
+
+figure('Color','w');
+tl = tiledlayout(2,2,'Padding','compact','TileSpacing','compact');
+axArr = gobjects(4,1);
+for iL = 1:4
+    axArr(iL) = nexttile;
+    p = patch(isosurface(Xg,Yg,Zg,Vg,levels(iL)));
+    isonormals(Xg,Yg,Zg,Vg,p);
+    c = cmap(round(1+255*(pct(iL)-pct(1))/(pct(end)-pct(1))),:);
+    set(p,'FaceColor',c,'EdgeColor','none','FaceAlpha',1);
+    axis equal tight; box on; grid on;
+    xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
+    view(3); camlight headlight; lighting gouraud;
+    xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
+    title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
+end
+linkprop(axArr,{'CameraPosition','CameraUpVector'});   % rotate all four together
+title(tl, sprintf('Forward-FTLE isosurfaces,  T = %.4g s', info.T));
 
