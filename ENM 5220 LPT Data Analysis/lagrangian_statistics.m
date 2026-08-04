@@ -28,7 +28,7 @@ else
 end
 
 %% Keep N longest tracks 
-N = 5000; %Set to nTracks to keep all tracks 
+N = 20000; %Set to nTracks to keep all tracks 
 
 trackLengths = sum(~isnan(x), 1);
 [~, order] = sort(trackLengths, 'descend');
@@ -430,7 +430,7 @@ end
 
 fin = isfinite(tracks.x) & isfinite(tracks.y) & isfinite(tracks.z);   % nT x nTracks
 
-dt_frame = 1/400;
+dt_frame = 0.0065;
 
 %|S|(T): how many particles survive each window
 i0    = round(nT/2);                       % a mid-experiment start frame
@@ -439,7 +439,7 @@ nSurv = arrayfun(@(m) nnz(fin(i0,:) & fin(i0+m,:)), mList);
 figure; plot(mList*dt_frame, nSurv,'-o'); xlabel('T [s]'); ylabel('|S|'); grid on
 
 %FTLE for a chosen window  (m<0 for backward-time / attracting LCS)
-m = 20;
+m = 40;
 [Xp, sigma, info] = ftleMeshfree(tracks, i0, m, struct('k',12));
 fprintf('T=%.4f s | valid=%d rejected=%d seeds=%d\n', ...
         info.T, info.nValid, info.nRejected, info.nSeeds);
@@ -575,9 +575,10 @@ Fs = scatteredInterpolant(Xp(:,1),Xp(:,2),Xp(:,3),sigma,'linear','none');
 Vg = Fs(Xg,Yg,Zg);                             % NaN outside hull -> no fake ridges
 
 pct    = [80 90 95 99];                        % upper-tail ridge levels
-levels = prctile(Vg(~isnan(Vg)), pct);
+levels = prctile(sigma, pct);
 cmap   = parula(256);
 
+% Tiled layout 
 figure('Color','w');
 tl = tiledlayout(2,2,'Padding','compact','TileSpacing','compact');
 axArr = gobjects(4,1);
@@ -587,6 +588,7 @@ for iL = 1:4
     isonormals(Xg,Yg,Zg,Vg,p);
     c = cmap(round(1+255*(pct(iL)-pct(1))/(pct(end)-pct(1))),:);
     set(p,'FaceColor',c,'EdgeColor','none','FaceAlpha',1);
+    alpha(p, 0.5)
     axis equal tight; box on; grid on;
     xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
     view(3); camlight headlight; lighting gouraud;
@@ -596,3 +598,49 @@ end
 linkprop(axArr,{'CameraPosition','CameraUpVector'});   % rotate all four together
 title(tl, sprintf('Forward-FTLE isosurfaces,  T = %.4g s', info.T));
 
+
+% Individual plots
+for iL = 1:4
+    figure; 
+    p = patch(isosurface(Xg,Yg,Zg,Vg,levels(iL)));
+    isonormals(Xg,Yg,Zg,Vg,p);
+    c = cmap(round(1+255*(pct(iL)-pct(1))/(pct(end)-pct(1))),:);
+    set(p,'FaceColor',c,'EdgeColor','none','FaceAlpha',1);
+    alpha(p, 0.5)
+    axis equal; box on; grid on;
+    xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
+    view(3); camlight headlight; lighting gouraud;
+    xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
+    title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
+end
+
+%% Averaged FTLE with ridge extraction
+%---- fixed grid: well-seeded region, real extents (from your histogram) ----
+allx = x(isfinite(x)); ally = y(isfinite(y)); allz = z(isfinite(z));
+h    = 0.10;                         % ~downstream inter-seed spacing [m]
+xg = 8 : h : prctile(allx,99);       % drop upstream-starved x<~8
+yg = min(ally) : h : max(ally);      % thin slab (~2 m)
+zg = prctile(allz,1) : h : prctile(allz,99);
+
+%---- ensemble mean FTLE over independent start frames ----
+m      = 30;                         % set by ridge-convergence sweep (< your 52)
+stride = m;           % >~ decorrelation time -> independent windows
+i0List = 1000 :stride: 3000;      % 1 : stride : (nT - m), forward (m>0). m<0 -> use (1-m):stride:nT
+rNbr   = 4*h;                        % fixed-radius neighbours: uniform filter scale
+
+[Vmean, Cnt] = ftleEnsembleMean(tracks, i0List, m, xg, yg, zg, ...
+                   struct('ftle', struct('radius', rNbr), 'minCount', 3));
+
+% Vmean is drop-in for your existing isosurface block (same meshgrid convention):
+% just use Vmean in place of Vg and levels = prctile(Vmean(~isnan(Vmean)), pct).
+
+%---- Hessian ridge extraction -> repelling LCS ----
+[Xr, Sr, out] = ftleRidges(Vmean, xg, yg, zg, ...
+                   struct('smoothVox',1, 'sigmaThrPct',60, 'alignTol',0.15, 'concavPct',60));
+%% Plot
+figure('Color','w');
+scatter3(Xr(:,1), Xr(:,2), Xr(:,3), 6, Sr, 'filled');
+axis tight; view(3); grid on; box on; colormap(parula); colorbar;
+pbaspect([range(xg) range(yg) range(zg)]);          % true aspect, no y-compression
+xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
+title(sprintf('Repelling LCS: FTLE ridges  (m=%d, %d windows)', m, numel(i0List)));
