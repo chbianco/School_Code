@@ -16,12 +16,12 @@ clear; clc; close all;
 %% =========================================================================
 
 % --- Configuration ---
-testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\07_20_26_flumeCalibration\cam1\frame_00120.tif'; % Path to your uploaded test frame
+testImagePath = 'C:\Users\FlumePIV\Desktop\CB_Data\08_05_26_flumeCalibration\cam1\frame_00541.tif'; % Path to your uploaded test frame
 radiusRange   = [25, 70]; % Range of possible detected circle sizes
 methodToTest  = 'TwoStage'; % 'TwoStage' or 'PhaseCode' to compare methods
 
 % Test a sweep from very permissive (low, ex 0.03) to aggressive (ex 0.25)
-thresholdsToTest = [0.03, 0.05, 0.08, 0.125];
+thresholdsToTest = [ 0.05, 0.08, 0.125, 0.15];
 
 % --- Image Preparation ---
 if ~exist(testImagePath, 'file')

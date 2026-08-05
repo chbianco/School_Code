@@ -52,7 +52,7 @@ maxRadius = 75; % max ball radius (px)
 detection_method = 'twostage'; %Detection method for imfindcircles.
 % Use 'twostage' unless you have a good reason not to 
 
-edgeThresh = [0.15, 0.1, 0.12, 0.15];
+edgeThresh = [0.125, 0.08, 0.1, 0.1]; 
 % Edge threshold for imfindcircles, ONE VALUE PER CAMERA (cam0, cam1, ...).
 % Lower = more permissive (finds weaker / lower-contrast circles). 0.125 works
 % well as a default; thresholdTester.m can help determine per-camera values.
