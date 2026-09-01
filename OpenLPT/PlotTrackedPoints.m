@@ -2,7 +2,7 @@
 % Plots wand detections from wand_points.csv, one subplot per camera.
 % PointIdx 0 (Small) = green, PointIdx 1 (Large) = red
 
-data = readtable('results/wand_points.csv');
+data = readtable('C:\Users\FlumePIV\Desktop\CB_Data\08_05_26_flumeCalibration\wand_points.csv');
 
 nCams = 4;
 figure('Position', [100 100 1400 900]);
