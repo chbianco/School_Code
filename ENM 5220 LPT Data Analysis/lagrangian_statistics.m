@@ -448,6 +448,11 @@ fprintf('T=%.4f s | valid=%d rejected=%d seeds=%d\n', ...
 Fs = scatteredInterpolant(Xp(:,1),Xp(:,2),Xp(:,3),sigma,'natural','none');
 % [Xg,Yg] = meshgrid(...); Sg = Fs(Xg,Yg,z0*ones(size(Xg))); ...
 
+% Backward FTLE
+mb = -40;
+[Xpb, sigmab, infob] = ftleMeshfree(tracks, i0, mb, struct('k',12));
+
+
 
 
 %% -----------PLOTTING------------------
@@ -592,7 +597,7 @@ for iL = 1:4
     axis equal tight; box on; grid on;
     xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
     view(3); camlight headlight; lighting gouraud;
-    xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
+    xlabel('x'); ylabel('y'); zlabel('z');
     title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
 end
 linkprop(axArr,{'CameraPosition','CameraUpVector'});   % rotate all four together
@@ -610,9 +615,67 @@ for iL = 1:4
     axis equal; box on; grid on;
     xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
     view(3); camlight headlight; lighting gouraud;
-    xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
+    xlabel('x'); ylabel('y'); zlabel('z');
     title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
 end
+
+%% Backward FTLE
+% from prior step: Xp (P x 3) seed positions, sigma (P x 1) FTLE, info.T
+
+qlo = prctile(Xpb, 1);  qhi = prctile(Xpb, 99);   % trim outlier seeds that inflate the box
+bb  = [qlo; qhi];
+Lxyz = bb(2,:) - bb(1,:);
+ref  = 2;                                      % >1 = smoother triangles (cosmetic)
+h    = (prod(Lxyz)/numel(sigmab))^(1/3) / ref;  % grid ~ inter-seed spacing
+xg = bb(1,1):h:bb(2,1);
+yg = bb(1,2):h:bb(2,2);
+zg = bb(1,3):h:bb(2,3);
+[Xg,Yg,Zg] = meshgrid(xg,yg,zg);
+
+Fs = scatteredInterpolant(Xpb(:,1),Xpb(:,2),Xpb(:,3),sigmab,'linear','none');
+Vg = Fs(Xg,Yg,Zg);                             % NaN outside hull -> no fake ridges
+
+pct    = [80 90 95 99];                        % upper-tail ridge levels
+levels = prctile(sigmab, pct);
+cmap   = parula(256);
+
+% Tiled layout 
+figure('Color','w');
+tl = tiledlayout(2,2,'Padding','compact','TileSpacing','compact');
+axArr = gobjects(4,1);
+for iL = 1:4
+    axArr(iL) = nexttile;
+    p = patch(isosurface(Xg,Yg,Zg,Vg,levels(iL)));
+    isonormals(Xg,Yg,Zg,Vg,p);
+    c = cmap(round(1+255*(pct(iL)-pct(1))/(pct(end)-pct(1))),:);
+    set(p,'FaceColor',c,'EdgeColor','none','FaceAlpha',1);
+    alpha(p, 0.5)
+    axis equal tight; box on; grid on;
+    xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
+    view(3); camlight headlight; lighting gouraud;
+    xlabel('x'); ylabel('y'); zlabel('z');
+    title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
+end
+linkprop(axArr,{'CameraPosition','CameraUpVector'});   % rotate all four together
+title(tl, sprintf('Backward-FTLE isosurfaces,  T = %.4g s', info.T));
+
+
+% Individual plots
+for iL = 1:4
+    figure; 
+    p = patch(isosurface(Xg,Yg,Zg,Vg,levels(iL)));
+    isonormals(Xg,Yg,Zg,Vg,p);
+    c = cmap(round(1+255*(pct(iL)-pct(1))/(pct(end)-pct(1))),:);
+    set(p,'FaceColor',c,'EdgeColor','none','FaceAlpha',1);
+    alpha(p, 0.5)
+    axis equal; box on; grid on;
+    xlim([bb(1,1) bb(2,1)]); ylim([bb(1,2) bb(2,2)]); zlim([bb(1,3) bb(2,3)]);
+    view(3); camlight headlight; lighting gouraud;
+    xlabel('x'); ylabel('y'); zlabel('z');
+    title(sprintf('\\sigma = %.3g s^{-1}  (p%d)', levels(iL), pct(iL)), 'Interpreter', 'tex');
+end
+
+
 
 %% Averaged FTLE with ridge extraction
 %---- fixed grid: well-seeded region, real extents (from your histogram) ----
@@ -642,5 +705,5 @@ figure('Color','w');
 scatter3(Xr(:,1), Xr(:,2), Xr(:,3), 6, Sr, 'filled');
 axis tight; view(3); grid on; box on; colormap(parula); colorbar;
 pbaspect([range(xg) range(yg) range(zg)]);          % true aspect, no y-compression
-xlabel('x [m]'); ylabel('y [m]'); zlabel('z [m]');
-title(sprintf('Repelling LCS: FTLE ridges  (m=%d, %d windows)', m, numel(i0List)));
+xlabel('x'); ylabel('y'); zlabel('z');
+title('Repelling FTLE ridges');
