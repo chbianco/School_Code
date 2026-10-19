@@ -16,8 +16,8 @@ data = readmatrix('Turbulence_HW3_data.txt');
 
 %% Zero out uw and vw
 
-data(:, 13) = zeros(1, 541);
-data(:, 14) = zeros(1, 541);
+data(:, 12) = zeros(size(data, 1), 1);
+data(:, 13) = zeros(size(data, 1), 1);
 
 %% Deviatoric stress
 y  = data(:, 1);
@@ -45,6 +45,7 @@ end
 %Plot principal direction
 figure;
 plot(y, theta, 'k');
+title('Principle Direction of Anisotropic Reynolds Stress')
 xlabel('$y/h$');
 ylabel('$\theta$ ($^\circ$)');
 grid on;
@@ -71,9 +72,11 @@ h2 = yp(N) - yp(N-1);
 dUdy(N) = h2/(h1*(h1+h2))*Up(N-2) - (h1+h2)/(h1*h2)*Up(N-1) ...
           + (h1+2*h2)/(h2*(h1+h2))*Up(N);
 
+nut    = -uvp./dUdy;          % nu_t / nu
+nut(N) = NaN;                 % 0/0 at centerline (both vanish)
+Re_tau = yp(N);
 
-
-%Plot eddy viscosity
+% Plot eddy viscosity
 figure;
 plot(y, nut/Re_tau, 'k');
 xlabel('$y/h$');
