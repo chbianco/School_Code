@@ -30,24 +30,42 @@ pmean = @(f) reshape(mean(mean(f(ix,:,iz),1),3), 1, []);   % 1 x ny
 uf = u - reshape(pmean(u), 1, ny, 1);
 vf = v - reshape(pmean(v), 1, ny, 1);
 wf = w - reshape(pmean(w), 1, ny, 1);
+% Guard: if the stored p includes the mean driving gradient (dP/dx = -1 in
+% these units) it is not periodic in x, and a plane-mean subtraction leaves
+% a constant offset on every yz plane. Detect and remove the linear trend.
+dp1   = p(nx,:,:) - p(1,:,:);  pjump = mean(dp1(:));
+if abs(pjump) > 1e-6*max(abs(p(:)))
+    fprintf('p not periodic in x (jump %.3f): removing linear x trend\n', pjump);
+    p = p - reshape(pjump*(x - x(1))/(x(nx) - x(1)), [], 1, 1);
+end
 pf = p - reshape(pmean(p), 1, ny, 1);
 % u_tau = rho = 1  ->  u'+ = u', p'+ = p'
+
+% Wall-normal quadrature weights (stretched grid) for volume-weighted stats
+yv  = y(:)';
+dyw = [yv(2)-yv(1), yv(3:end)-yv(1:end-2), yv(end)-yv(end-1)]/2;   % 1 x ny
  
 %% B) u'+(x+,z+) at five wall-normal locations
 yp_target = [3, 15, 35, 50, 180];        % sublayer, buffer, log, log, centerline
 lbl = {'viscous sublayer','buffer layer','log layer','log layer','centerline'};
-figure('Name','B: u''+ planes','Position',[50 50 900 1200]);
+figure('Name','B: u''+ planes','Position',[50 50 1500 1050]);
+tl = tiledlayout(3, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
 for n = 1:5
     [~, j] = min(abs(yp - yp_target(n)));
     uplane = squeeze(uf(:,j,:));                       % nx x nz
     tmp = uplane(ix,iz);  s = std(tmp(:));
-    subplot(5,1,n);
-    pcolor(xp, zp, uplane'); shading flat; daspect([1 1 1]); colorbar;
-    caxis(2.5*s*[-1 1]); colormap(jet);
-    title(sprintf('$u^{\\prime +}$ at $y^+ = %.1f$ (%s), $u^{\\prime +}_{\\mathrm{rms}} = %.2f$', yp(j), lbl{n}, s));
-    ylabel('$z^+$'); if n == 5, xlabel('$x^+$'); end
+    ax = nexttile;
+    pcolor(xp, zp, uplane'); shading flat; daspect([1 1 1]);
+    caxis(2.5*s*[-1 1]); colormap(ax, jet);
+    cb = colorbar; cb.TickLabelInterpreter = 'latex';
+    xlim([0 xp(end)]); ylim([0 zp(end)]);
+    set(ax, 'XTick', 0:200:1000, 'YTick', 0:200:600, 'FontSize', 14);
+    title(sprintf('$y^+ = %.1f$ (%s), $u^{\\prime +}_{\\mathrm{rms}} = %.2f$', yp(j), lbl{n}, s), ...
+          'Interpreter', 'latex', 'FontSize', 14);
+    xlabel('$x^+$', 'Interpreter', 'latex'); ylabel('$z^+$', 'Interpreter', 'latex');
 end
-if SAVE_FIGS, print('-dpng','-r120','figB_uplanes.png'); end
+title(tl, '$u^{\prime +}(x^+, z^+)$ at five wall-normal locations', 'Interpreter', 'latex', 'FontSize', 18);
+if SAVE_FIGS, print('-dpng','-r150','figB_uplanes.png'); end
  
 %% C, D) Low-speed streaks in the buffer layer (y+ ~ 12)
 [~, jb] = min(abs(yp - 12));
@@ -69,6 +87,7 @@ Rx = mean(real(ifft(abs(fft(U,[],1)).^2,[],1)),2);  Rx = Rx/Rx(1);
 dzp = (0:nz-2)*(zp(2)-zp(1));  dxp = (0:nx-2)*(xp(2)-xp(1));
 half = 1:floor((nz-1)/2);
 kmin = find(Rz(1:end-1) < 0 & diff(Rz) > 0, 1);       % first local minimum
+if isempty(kmin), [~, kmin] = min(Rz(half)); end
 fprintf('C) R_uu(dz+) = %s\n', mat2str(round(Rz(half)*100)/100));
 fprintf('C) First R_uu(dz) minimum at dz+ = %.0f -> streak spacing ~ %.0f wall units\n', ...
         dzp(kmin), 2*dzp(kmin));
@@ -126,6 +145,11 @@ clear A SS OO Sij Oij
 Qp = Q*nu^2;  wxp = wx*nu;  wyp = wy*nu;  wzp = wz*nu;
 fprintf('F) max|div u|/max|omega| = %.2e (sanity check)\n', max(abs(divu(:)))/max(abs(wx(:))));
  
+% Q threshold (needed in G for consistent scaling; defined per part H)
+Qrms   = sqrt(pmean(Qp.^2));                     % rms of Q+ on each y plane
+Qthr   = max(Qrms);
+fprintf('H) Q+_rms^max = %.4f (at y+ = %.1f)\n', Qthr, yp(Qrms == Qthr));
+
 %% G) yz plane at x = 5.592 (i = 90): Q+, in-plane streamlines, p'+
 i0 = 90;  fprintf('G) x(%d) = %.3f\n', i0, x(i0));
 [Zg, Yg] = meshgrid(zp, yp);                       % ny x nz
@@ -134,7 +158,7 @@ Vyz = squeeze(vf(i0,:,:));  Wyz = squeeze(wf(i0,:,:));
  
 figure('Name','G: Q+ and streamlines','Position',[50 50 1400 600]);
 pcolor(Zg, Yg, Qyz); shading interp; daspect([1 1 1]); colormap(hot); colorbar;
-caxis([0 0.02]); hold on;
+caxis([0 3*Qthr]); hold on;                        % Qmin = 0, cores emphasized
 if exist('streamslice','file') == 2
     hs = streamslice(Zg, Yg, Wyz, Vyz, 4);
 else                                               % Octave fallback
@@ -149,23 +173,24 @@ if SAVE_FIGS, print('-dpng','-r120','figG_Q_streamlines.png'); end
 figure('Name','G: p''+','Position',[50 50 1400 600]);
 pcolor(Zg, Yg, pyz); shading interp; daspect([1 1 1]); colormap(jet); colorbar;
 caxis([-3 3]); hold on;
-contour(Zg, Yg, Qyz, [0.005 0.005], 'k', 'LineWidth', 1);   % Q+ outline for reference
-xlabel('$z^+$'); ylabel('$y^+$'); title(sprintf('$p^{\\prime +}$, $x = %.3f$ (black: $Q^+ = 0.005$)', x(i0)));
+contour(Zg, Yg, Qyz, [Qthr Qthr], 'k', 'LineWidth', 1);     % Q+ = Qthr outline
+xlabel('$z^+$'); ylabel('$y^+$'); title(sprintf('$p^{\\prime +}$, $x = %.3f$ (black: $Q^+ = %.4f$)', x(i0), Qthr));
 if SAVE_FIGS, print('-dpng','-r120','figG_pressure.png'); end
-mask = Qyz > 0.005;
-fprintf('G) mean p''+ where Q+>0.005: %.2f ; elsewhere: %.2f\n', mean(pyz(mask)), mean(pyz(~mask)));
- 
+mask = Qyz > Qthr;
+fprintf('G) mean p''+ where Q+>Qthr: %.2f ; elsewhere: %.2f\n', mean(pyz(mask)), mean(pyz(~mask)));
+
 %% H) 3D: Q isosurfaces colored by omega_x, plus u'+ = -2 streaks
-Qrms   = sqrt(pmean(Qp.^2));                     % rms of Q+ on each y plane
-Qthr   = max(Qrms);
-fprintf('H) Q+_rms^max = %.4f (at y+ = %.1f)\n', Qthr, yp(Qrms == Qthr));
- 
+
 [X3, Y3, Z3] = meshgrid(x, y, z);                % ny x nx x nz
 P = @(f) permute(f, [2 1 3]);
 figure('Name','H: vortical structures');
 fv = isosurface(X3, Y3, Z3, P(Qp), Qthr, P(wxp));
 hQ = patch(fv, 'FaceColor', 'interp', 'EdgeColor', 'none');
-colormap(jet); caxis([-0.2 0.2]); cb = colorbar; ylabel(cb, '$\omega_x^+$');
+colormap(jet); caxis([-0.2 0.2]); cb = colorbar;
+cb.TickLabelInterpreter = 'latex';
+cb.Label.Interpreter = 'latex';
+cb.Label.String = '$\omega_x^+$';
+cb.Label.FontSize = 18;
 hold on;
 hU = patch(isosurface(X3, Y3, Z3, P(uf), -2), 'FaceColor', [0.6 0.6 0.6], ...
            'EdgeColor', 'none', 'FaceAlpha', 0.25);
@@ -184,18 +209,51 @@ box on; try, set(gca,'BoxStyle','full'); end   % BoxStyle is MATLAB-only
 if SAVE_FIGS, print('-dpng','-r100','figH_isosurfaces.png'); end
  
 %% I) Supporting statistics for the structure characterization
+% All statistics use unique periodic points and are weighted by the local
+% cell thickness dy, so the clustered near-wall grid does not bias them.
 core = Qp > Qthr;
-nyc  = squeeze(sum(sum(core(ix,:,iz),1),3));     % points per y plane
-fprintf('I) Fraction of Q+>thr points: y+<5: %.2f, 5-30: %.2f, 30-54: %.2f, >54: %.2f\n', ...
-    sum(nyc(yp<5))/sum(nyc), sum(nyc(yp>=5 & yp<30))/sum(nyc), ...
-    sum(nyc(yp>=30 & yp<54))/sum(nyc), sum(nyc(yp>=54))/sum(nyc));
-[~, jpk] = max(nyc ./ max(nyc));
-fprintf('I) Vortex-core volume fraction peaks at y+ = %.1f\n', yp(jpk));
-fprintf('I) Within cores: P(omega_x>0) = %.2f\n', mean(wxp(core) > 0));
+cu   = core(ix,:,iz);
+W    = repmat(reshape(dyw,1,ny,1), nx-1, 1, nz-1);
+Yp3  = repmat(reshape(yp,1,ny,1), nx-1, 1, nz-1);
+wc   = W(cu);  ycore = Yp3(cu);  Vc = sum(wc);
+band = @(lo,hi) sum(wc(ycore>=lo & ycore<hi))/Vc;
+fprintf('I) Core volume fraction by layer: y+<5: %.2f, 5-30: %.2f, 30-54: %.2f, >54: %.2f\n', ...
+    band(0,5), band(5,30), band(30,54), band(54,Inf));
+afrac = squeeze(sum(sum(cu,1),3))/((nx-1)*(nz-1));  % plane-area fraction = local volume fraction
+[~, jpk] = max(afrac);
+fprintf('I) Local core volume fraction peaks at y+ = %.1f\n', yp(jpk));
+
+wxu = wxp(ix,:,iz);  wyu = wyp(ix,:,iz);
 wzf = wzp - reshape(pmean(wzp), 1, ny, 1);       % remove mean-shear vorticity
+wzu = wzf(ix,:,iz);
+wmean = @(f) sum(wc.*f)/Vc;
+fprintf('I) Within cores: P(omega_x>0) = %.2f\n', wmean(double(wxu(cu) > 0)));
 fprintf('I) Within cores: <wx^2>:<wy^2>:<wz''^2> = %.3f : %.3f : %.3f\n', ...
-    mean(wxp(core).^2), mean(wyp(core).^2), mean(wzf(core).^2));
+    wmean(wxu(cu).^2), wmean(wyu(cu).^2), wmean(wzu(cu).^2));
+% Orientation of the core vorticity vector. Elevation (x-y plane) is
+% invariant under z -> -z, so its mean is meaningful; azimuth (x-z) flips
+% sign under the reflection, so report its magnitude.
+elev = atand(wyu(cu)./wxu(cu));  azim = atand(wzu(cu)./wxu(cu));
+fprintf('I) Core vorticity: mean elevation %.1f deg, mean |azimuth| %.1f deg\n', ...
+    wmean(elev), wmean(abs(azim)));
+
+% Object extents (Image Processing Toolbox). Objects cut by the periodic
+% boundaries are split, so extents are biased slightly low.
+if exist('bwconncomp','file')
+    CC  = bwconncomp(cu, 26);
+    dx1 = xp(2)-xp(1);  dz1 = zp(2)-zp(1);
+    ext = nan(CC.NumObjects, 3);
+    for k = 1:CC.NumObjects
+        if numel(CC.PixelIdxList{k}) < 27, continue; end
+        [ii,jj,kk] = ind2sub(size(cu), CC.PixelIdxList{k});
+        ext(k,:) = [(max(ii)-min(ii)+1)*dx1, yp(max(jj))-yp(min(jj)), (max(kk)-min(kk)+1)*dz1];
+    end
+    ext = ext(all(isfinite(ext),2),:);
+    fprintf('I) %d objects; median extent (x+, y+, z+) = (%.0f, %.0f, %.0f)\n', ...
+        size(ext,1), median(ext(:,1)), median(ext(:,2)), median(ext(:,3)));
+end
+
 figure('Name','I: vortex-core distribution');
-plot(yp, nyc/((nx-1)*(nz-1)), 'o-'); grid on;
-xlabel('$y^+$'); ylabel('volume fraction with $Q^+ > Q^+_{\mathrm{thr}}$');
+plot(yp, afrac, 'o-'); grid on;
+xlabel('$y^+$'); ylabel('local volume fraction with $Q^+ > Q^+_{\mathrm{thr}}$');
 if SAVE_FIGS, print('-dpng','-r120','figI_core_distribution.png'); end
